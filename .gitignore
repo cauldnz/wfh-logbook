@@ -1,0 +1,93 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# IDE / editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+*.secret
+
+# Application data (NEVER commit real logbook data)
+data/
+*.sqlite
+*.sqlite3
+*.db
+backups/
+
+# Exports
+exports/
+*.xlsx
+*.csv
+!docs/**/*.csv
+!tests/**/*.csv
+
+# Docker
+.docker/
+
+# Claude Code worktrees (parallel branch checkouts)
+.claude/
+
+# Logs
+*.log
+logs/
+
+# OS junk
+Thumbs.db
+ehthumbs.db
+Desktop.ini
