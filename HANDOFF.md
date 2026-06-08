@@ -47,6 +47,8 @@ Build inside the existing repo. Create exactly this structure:
 
 ```
 .
+├── .devcontainer/
+│   └── devcontainer.json    # VS Code dev environment (Python 3.12, uv); inner-loop only
 ├── app/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI app factory + startup wiring

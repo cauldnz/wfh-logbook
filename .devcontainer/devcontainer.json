@@ -1,0 +1,49 @@
+{
+  // WFH Logbook dev environment.
+  // Inner-loop only: editing, pytest, mypy, ruff, uvicorn. The full
+  // `docker compose` / `podman compose` stack (app + cloudflared sidecar) is
+  // run from a host terminal, not from inside this container.
+  //
+  // Podman users (Docker-compat mode): set this once in your VS Code USER
+  // settings so the Dev Containers extension drives Podman:
+  //   "dev.containers.dockerPath": "podman"
+  "name": "wfh-logbook",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12-bookworm",
+
+  // Install uv, then editable install with dev extras once Phase 1 has created
+  // pyproject.toml. Tolerant of pyproject.toml not existing yet (pre-Phase 1).
+  "postCreateCommand": "pip install --no-cache-dir uv && if [ -f pyproject.toml ]; then uv pip install --system -e '.[dev]'; else echo 'No pyproject.toml yet (pre-Phase 1) - skipping dependency install.'; fi",
+
+  // Web UI / API port.
+  "forwardPorts": [8088],
+  "portsAttributes": {
+    "8088": { "label": "WFH Logbook (FastAPI)" }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker",
+        "redhat.vscode-yaml",
+        "alexcvzz.vscode-sqlite"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "editor.formatOnSave": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+          }
+        },
+        "mypy-type-checker.args": ["--strict"],
+        "files.insertFinalNewline": true,
+        "files.trimTrailingWhitespace": true
+      }
+    }
+  }
+}
