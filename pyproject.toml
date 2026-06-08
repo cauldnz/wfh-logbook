@@ -1,0 +1,124 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wfh-logbook"
+version = "0.1.0"
+description = "Self-hosted audit-defensible logbook for ATO fixed-rate WFH hours, sourced from UniFi association events."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [{ name = "Chris Auld" }]
+
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "apscheduler>=3.10,<4",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "httpx>=0.27",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.4",
+    "jinja2>=3.1",
+    "openpyxl>=3.1",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "pytest-asyncio>=0.23",
+    "time-machine>=2.14",
+    "respx>=0.21",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-openpyxl",
+]
+
+[project.scripts]
+wfh-sessioniser = "app.sessions.__main__:main"
+wfh-export = "app.exporters.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+# -----------------------------------------------------------------------------
+# Ruff (lint + format)
+# -----------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [
+    ".claude",        # parallel-worktree scratch area (CLAUDE.md)
+    "alembic/versions",  # generated migrations
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # bugbear
+    "UP",  # pyupgrade
+    "SIM", # simplify
+    "RUF", # ruff-specific
+    "N",   # pep8-naming
+    "C4",  # comprehensions
+    "PIE", # misc
+    "T20", # flake8-print (no print)
+    "DTZ", # datetime no-naive
+    "PTH", # pathlib
+]
+ignore = [
+    "E501",  # line-too-long: ruff format handles it
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "DTZ",   # tests construct fixed datetimes deliberately
+    "T20",   # print in tests is fine
+    "N802",  # test function names
+]
+"alembic/env.py" = ["T20"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+# -----------------------------------------------------------------------------
+# Mypy
+# -----------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["app"]
+exclude = [
+    "^\\.claude/",
+    "^alembic/versions/",
+]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["apscheduler.*"]
+ignore_missing_imports = true
+
+# -----------------------------------------------------------------------------
+# Pytest
+# -----------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning:apscheduler.*",
+    # Starlette's TestClient warns about httpx2 not being installed yet.
+    # httpx2 is not stable; this is upstream, not actionable here.
+    "ignore::starlette.exceptions.StarletteDeprecationWarning",
+]
+norecursedirs = [".claude", ".git", ".venv", "node_modules", "alembic"]

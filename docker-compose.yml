@@ -1,0 +1,52 @@
+# WFH Logbook compose stack.
+#
+# On Windows, Chris runs Podman in Docker-compat mode — use `podman compose up`
+# (not `docker compose up`). The compose file is engine-agnostic.
+#
+# Two services:
+#   - app: the FastAPI logbook (port 8088 on LAN).
+#   - cloudflared: optional Cloudflare Tunnel sidecar for Telegram webhook
+#     ingress (Phase 7). Disabled unless CLOUDFLARE_TUNNEL_TOKEN is set.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: wfh-logbook:latest
+    container_name: wfh-logbook
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${HTTP_PORT:-8088}:8088"
+    volumes:
+      - wfh-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8088/api/health').status==200 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # Cloudflare Tunnel sidecar (Phase 7). Enable by setting
+  # CLOUDFLARE_TUNNEL_TOKEN in `.env`. If the token is empty, this service
+  # starts but does nothing useful — set up the tunnel in the Cloudflare
+  # dashboard and point the public hostname at `app:8088`.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: wfh-cloudflared
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARE_TUNNEL_TOKEN:-}"]
+    env_file:
+      - .env
+    depends_on:
+      - app
+    profiles:
+      # Only start when explicitly requested:
+      #   podman compose --profile tunnel up
+      - tunnel
+
+volumes:
+  wfh-data:
+    driver: local
