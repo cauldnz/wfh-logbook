@@ -8,14 +8,16 @@ backup timestamps.
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.db import get_session
-from app.models import Config, PollerState
+from app.models import Config, Observation, PollerState
 from app.schemas import HealthResponse
 
 logger = logging.getLogger(__name__)
@@ -46,6 +48,27 @@ def health(db: Session = Depends(get_session)) -> HealthResponse:  # noqa: B008 
     except SQLAlchemyError:
         logger.exception("health: failed to read poller_state")
 
+    # Phase 6 enrichments: DB file size and observation count for the
+    # last 24 hours. Both best-effort; failures don't degrade /api/health.
+    db_size_bytes: int | None = None
+    try:
+        db_path = get_settings().db_path()
+        if db_path.exists():
+            db_size_bytes = db_path.stat().st_size
+    except OSError:
+        logger.exception("health: failed to stat db")
+
+    observations_last_24h: int | None = None
+    try:
+        cutoff = datetime.now(UTC) - timedelta(hours=24)
+        observations_last_24h = int(
+            db.execute(
+                select(func.count(Observation.id)).where(Observation.observed_at >= cutoff)
+            ).scalar_one()
+        )
+    except SQLAlchemyError:
+        logger.exception("health: failed to count recent observations")
+
     return HealthResponse(
         status="ok" if db_ok else "degraded",
         db_ok=db_ok,
@@ -55,4 +78,6 @@ def health(db: Session = Depends(get_session)) -> HealthResponse:  # noqa: B008 
         last_sessioniser_run_at=poller.last_sessioniser_run_at if poller else None,
         last_backup_at=poller.last_backup_at if poller else None,
         rule_version=rule_version,
+        db_size_bytes=db_size_bytes,
+        observations_last_24h=observations_last_24h,
     )

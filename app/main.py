@@ -97,11 +97,10 @@ def ensure_poller_state(db: Session) -> PollerState:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    from app.logging_config import configure_logging
+
     settings = get_settings()
-    logging.basicConfig(
-        level=settings.log_level,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
+    configure_logging(level=settings.log_level, structured=settings.log_format == "json")
     init_engine(settings)
     install_triggers_now()
     SessionLocal = get_sessionmaker()  # noqa: N806 (SQLAlchemy convention)

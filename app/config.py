@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     poll_interval_seconds: int = 60
     data_dir: Path = Field(default=Path("/data"))
     log_level: str = "INFO"
+    log_format: Literal["json", "text"] = "json"
 
     # --------------------------------------------------------------- Telegram
     telegram_bot_token: str = ""

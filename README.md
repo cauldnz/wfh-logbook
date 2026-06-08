@@ -6,7 +6,12 @@ The system uses a dedicated Wi-Fi SSID on a Ubiquiti home network as an explicit
 
 ## Status
 
-Bootstrap. Documentation and specification only — no implementation yet. See [HANDOFF.md](HANDOFF.md) for the implementation brief.
+Phases 1, 3, 4, 5, 6 implemented per [HANDOFF.md](HANDOFF.md). Phases 2
+(UniFi poller) and 7 (Telegram bot) are pending real-data capture from
+the user's controller and Telegram updates per the project's
+"Real Data First" rule (see [CLAUDE.md](CLAUDE.md)). The web UI, API,
+sessionisation, XLSX/CSV export, and nightly backup are all working;
+observations land in the database manually until Phase 2 wires the poller.
 
 ## Why this exists
 
@@ -45,7 +50,69 @@ It is not useful for people without a UniFi network. The same design pattern cou
 
 ## Quick start
 
-Not yet. The repository currently contains design documents only. Once implementation is complete (see [HANDOFF.md](HANDOFF.md)), this section will describe the Docker Compose bring-up.
+Requires a container engine (Docker Desktop or Podman in Docker-compat mode)
+and ~10 minutes.
+
+```bash
+# 1. Configure
+cp .env.example .env
+# Edit .env: UNIFI_HOST, UNIFI_USERNAME, UNIFI_PASSWORD, WORK_SSID,
+# and WORK_DEVICE_MACS (form: aa:bb:cc:dd:ee:ff=iPhone,11:22:...=Laptop).
+
+# 2. Build & run
+make docker-build
+make docker-up
+
+# 3. Verify
+curl http://localhost:8088/api/health
+# Open http://localhost:8088 in a browser.
+```
+
+The container runs `alembic upgrade head` on startup, seeds the `config`
+row from `.env`, then exposes the FastAPI service on port 8088 (LAN). Data
+lives in the `wfh-data` named volume.
+
+### Local development
+
+If you prefer to iterate without Docker:
+
+```bash
+uv venv --python 3.12
+uv pip install -e ".[dev]"
+make migrate        # alembic upgrade head
+make dev            # uvicorn with --reload on :8088
+make test
+make lint typecheck
+```
+
+A VS Code devcontainer is provided ([.devcontainer/devcontainer.json](.devcontainer/devcontainer.json));
+Reopen-in-Container gives you a Python 3.12 / uv / Ruff / Mypy environment
+ready for the inner loop. The full compose stack is run from the host with
+`podman compose up` (or `docker compose up`).
+
+### Year-end export
+
+```bash
+# From a host shell (with the venv active):
+make export-xlsx FY=2025-26 OUT=/tmp/wfh-2025-26.xlsx
+
+# Or via the API:
+curl -o wfh-2025-26.xlsx "http://localhost:8088/api/export.xlsx?fy=2025-26"
+```
+
+### Optional: Telegram bot via Cloudflare Tunnel
+
+Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `PUBLIC_BASE_URL`, and
+`TELEGRAM_ALLOWED_USER_IDS` in `.env`, plus `CLOUDFLARE_TUNNEL_TOKEN`, then:
+
+```bash
+podman compose --profile tunnel up -d
+```
+
+One-time setup: create a Cloudflare Tunnel in the dashboard, bind a
+public hostname to `app:8088`. Phase 7 of the build (Telegram + bot
+conversation logic) is gated on capturing real Telegram payload samples
+per the project's Real Data First rule — see [CLAUDE.md](CLAUDE.md).
 
 ## Disclaimer
 
