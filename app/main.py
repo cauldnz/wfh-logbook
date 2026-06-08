@@ -12,6 +12,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
@@ -20,7 +21,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.days import router as days_router
+from app.api.exports import router as exports_router
 from app.api.health import router as health_router
+from app.backup.snapshot import run_snapshot
 from app.config import Settings, get_settings
 from app.db import get_engine, get_sessionmaker, init_engine, install_triggers_now
 from app.models import Config, PollerState
@@ -110,6 +113,18 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
     scheduler = BackgroundScheduler()
     register_scheduler_jobs(scheduler, timezone_name)
+    # Nightly backup at 02:00 local (ARCHITECTURE §7.1).
+    from apscheduler.triggers.cron import CronTrigger
+
+    scheduler.add_job(
+        run_snapshot,
+        trigger=CronTrigger(hour=2, minute=0, timezone=ZoneInfo(timezone_name)),
+        args=[settings.data_dir / "backups", timezone_name],
+        id="nightly_backup",
+        replace_existing=True,
+        coalesce=True,
+        max_instances=1,
+    )
     scheduler.start()
     logger.info("wfh-logbook started")
     try:
@@ -130,6 +145,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(health_router)
     app.include_router(days_router)
+    app.include_router(exports_router)
     app.include_router(web_router)
     # Static assets — vendored, never CDN (CLAUDE.md / HANDOFF §6 Phase 4).
     static_dir = Path(__file__).resolve().parent / "web" / "static"
