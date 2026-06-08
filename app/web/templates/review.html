@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Review &middot; WFH Logbook{% endblock %}
+{% block content %}
+  <h2>Yesterday</h2>
+  {% include "_day_card.html" with context %}
+
+  {% if today %}
+    <h2 style="margin-top:1.5rem;">Today (so far)</h2>
+    {% set day = today %}
+    {% include "_day_card.html" %}
+  {% endif %}
+{% endblock %}

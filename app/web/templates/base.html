@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}WFH Logbook{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}">
+  <script src="{{ url_for('static', path='htmx.min.js') }}" defer></script>
+</head>
+<body>
+  <header class="site">
+    <h1>WFH Logbook</h1>
+    <nav>
+      <a href="/" class="{% if active == 'review' %}active{% endif %}">Review</a>
+      <a href="/calendar" class="{% if active == 'calendar' %}active{% endif %}">Calendar</a>
+      <a href="/year/{{ current_fy }}" class="{% if active == 'year' %}active{% endif %}">Year</a>
+    </nav>
+    <span class="spacer"></span>
+    <span class="badge muted">{{ rule_version }}</span>
+  </header>
+  <main>
+    {% if poll_banner %}
+      <div class="banner warn">
+        Poller last succeeded {{ poll_banner }} ago. Live data may be stale until the next successful poll.
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

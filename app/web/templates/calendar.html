@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Calendar &middot; WFH Logbook{% endblock %}
+{% block content %}
+  <div class="card">
+    <h2>Last 90 days</h2>
+    <p class="muted">
+      <span class="badge ok">ok</span> reviewed-not-locked &middot;
+      <span class="badge locked">locked</span> &middot;
+      <span class="badge warn">warn</span> unreviewed &middot;
+      <span class="badge error">anom.</span> anomalous &middot;
+      <span class="badge muted">muted</span> no data
+    </p>
+    <div class="calendar">
+      {# Pad leading cells so dates line up to Monday-first columns. #}
+      {% for _ in range(leading_pad) %}<div class="day no-day"></div>{% endfor %}
+      {% for d in days %}
+        {% set cls = "no-data" %}
+        {% if d.latest %}
+          {% if d.latest.locked %}{% set cls = "locked" %}
+          {% elif d.latest.anomalous %}{% set cls = "anomalous" %}
+          {% else %}{% set cls = "unreviewed" %}{% endif %}
+        {% endif %}
+        <a class="day {{ cls }}" href="/day/{{ d.local_date }}" title="{{ d.local_date }}">
+          {{ d.local_date.day }}{% if d.latest %}<br><strong>{{ "%.1f"|format(d.latest.claimed_seconds/3600) }}h</strong>{% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+{% endblock %}

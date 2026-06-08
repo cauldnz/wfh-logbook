@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}{{ day.local_date }} &middot; WFH Logbook{% endblock %}
+{% block content %}
+  <p><a href="/calendar" class="muted">&larr; Calendar</a></p>
+  {% include "_day_card.html" %}
+{% endblock %}

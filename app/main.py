@@ -11,17 +11,21 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.days import router as days_router
 from app.api.health import router as health_router
 from app.config import Settings, get_settings
 from app.db import get_engine, get_sessionmaker, init_engine, install_triggers_now
 from app.models import Config, PollerState
 from app.sessions.scheduler import register_scheduler_jobs
+from app.web.routes import router as web_router
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +129,11 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(health_router)
+    app.include_router(days_router)
+    app.include_router(web_router)
+    # Static assets — vendored, never CDN (CLAUDE.md / HANDOFF §6 Phase 4).
+    static_dir = Path(__file__).resolve().parent / "web" / "static"
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
     return app
 
 

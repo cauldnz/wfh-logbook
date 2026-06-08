@@ -1,0 +1,123 @@
+{# Partial: one day's review card. Used by the review page and HTMX adjust/lock returns. #}
+<div class="card" id="day-{{ day.local_date }}">
+  <div class="row">
+    <h2 style="margin:0;">{{ day.local_date }} <span class="muted">({{ day.local_date.strftime('%A') }})</span></h2>
+    {% if day.latest %}
+      {% if day.latest.locked %}
+        <span class="badge locked">Locked v{{ day.latest.version }}</span>
+      {% elif day.latest.anomalous %}
+        <span class="badge error">Anomalous ({{ day.latest.claimed_seconds // 3600 }}h)</span>
+      {% else %}
+        <span class="badge ok">v{{ day.latest.version }} unlocked</span>
+      {% endif %}
+    {% else %}
+      <span class="badge muted">No data</span>
+    {% endif %}
+    <span class="spacer"></span>
+    {% if day.latest %}
+      <span class="hours">{{ "%.2f"|format(day.latest.claimed_seconds / 3600) }} h</span>
+    {% endif %}
+  </div>
+
+  {% if day.latest %}
+    <p class="hours-sub">
+      Computed {{ "%.2f"|format(day.latest.computed_seconds / 3600) }} h
+      {% if day.latest.adjustment_seconds %}
+        &middot; adjusted {{ "%+.0f"|format(day.latest.adjustment_seconds / 60) }} min
+        ({{ day.latest.adjustment_reason }})
+      {% endif %}
+      &middot; rule {{ day.latest.rule_version }}
+    </p>
+  {% endif %}
+
+  {% if day.sessions %}
+    <h3 style="margin-top:1rem;">Sessions</h3>
+    <table>
+      <thead>
+        <tr><th>Start</th><th>End</th><th>Duration</th><th>Devices</th><th>Bridged</th></tr>
+      </thead>
+      <tbody>
+      {% for s in day.sessions %}
+        <tr>
+          <td>{{ s.started_at.astimezone(tz).strftime('%H:%M:%S') }}</td>
+          <td>{{ s.ended_at.astimezone(tz).strftime('%H:%M:%S') }}</td>
+          <td>{{ "%.2f"|format(s.duration_seconds / 3600) }} h</td>
+          <td>{{ s.devices_seen|join(', ') }}</td>
+          <td>{% if s.bridged_gaps_count %}{{ s.bridged_gaps_count }} ({{ s.bridged_gaps_seconds // 60 }} min){% else %}&mdash;{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if day.latest and not day.latest.locked %}
+    <form class="adjust"
+          hx-post="/web/days/{{ day.local_date }}/adjust"
+          hx-target="#day-{{ day.local_date }}"
+          hx-swap="outerHTML">
+      <label>Minutes (signed)
+        <input type="number" name="minutes" required step="1" placeholder="-45">
+      </label>
+      <label>Reason
+        <input type="text" name="reason" required maxlength="500" placeholder="lunch 12:30-13:15">
+      </label>
+      <button type="submit">Apply adjustment</button>
+      <button class="muted" type="submit"
+              hx-post="/web/days/{{ day.local_date }}/lock"
+              hx-target="#day-{{ day.local_date }}"
+              hx-swap="outerHTML"
+              formnovalidate>
+        Lock day
+      </button>
+      <button class="muted" type="submit"
+              hx-post="/web/days/{{ day.local_date }}/resessionise"
+              hx-target="#day-{{ day.local_date }}"
+              hx-swap="outerHTML"
+              formnovalidate>
+        Re-sessionise
+      </button>
+    </form>
+  {% elif day.latest and day.latest.locked %}
+    <p class="muted">
+      Locked at {{ day.latest.locked_at.astimezone(tz).strftime('%Y-%m-%d %H:%M %Z') }}.
+      Adjustments after lock create a new unlocked version.
+    </p>
+    <form class="adjust"
+          hx-post="/web/days/{{ day.local_date }}/adjust"
+          hx-target="#day-{{ day.local_date }}"
+          hx-swap="outerHTML">
+      <label>Minutes (signed)
+        <input type="number" name="minutes" required step="1">
+      </label>
+      <label>Reason
+        <input type="text" name="reason" required maxlength="500">
+      </label>
+      <button type="submit">Adjust (creates v{{ day.latest.version + 1 }})</button>
+    </form>
+  {% endif %}
+
+  {% if day.versions and day.versions|length > 1 %}
+    <details style="margin-top:0.75rem;">
+      <summary class="muted">History ({{ day.versions|length }} versions)</summary>
+      <table>
+        <thead>
+          <tr><th>v</th><th>Computed</th><th>Adj (min)</th><th>Reason</th><th>Claimed</th><th>By</th><th>At</th><th>Locked</th></tr>
+        </thead>
+        <tbody>
+        {% for v in day.versions %}
+          <tr>
+            <td>v{{ v.version }}</td>
+            <td>{{ "%.2f"|format(v.computed_seconds / 3600) }} h</td>
+            <td>{{ "%+.0f"|format(v.adjustment_seconds / 60) if v.adjustment_seconds else "" }}</td>
+            <td>{{ v.adjustment_reason or "" }}</td>
+            <td>{{ "%.2f"|format(v.claimed_seconds / 3600) }} h</td>
+            <td>{{ v.created_by }}</td>
+            <td>{{ v.created_at.astimezone(tz).strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{% if v.locked %}<span class="badge locked">locked</span>{% else %}&mdash;{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </details>
+  {% endif %}
+</div>
