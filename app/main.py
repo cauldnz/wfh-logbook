@@ -12,6 +12,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
+from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -20,6 +21,7 @@ from app.api.health import router as health_router
 from app.config import Settings, get_settings
 from app.db import get_engine, get_sessionmaker, init_engine, install_triggers_now
 from app.models import Config, PollerState
+from app.sessions.scheduler import register_scheduler_jobs
 
 logger = logging.getLogger(__name__)
 
@@ -94,18 +96,22 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
     init_engine(settings)
-    # Triggers are also installed on first_connect, but call explicitly so a
-    # post-migration startup gets them even if first_connect already fired.
     install_triggers_now()
     SessionLocal = get_sessionmaker()  # noqa: N806 (SQLAlchemy convention)
     with SessionLocal() as db:
-        seed_config_if_missing(db, settings)
+        cfg = seed_config_if_missing(db, settings)
         ensure_poller_state(db)
         db.commit()
+        timezone_name = cfg.local_timezone
+
+    scheduler = BackgroundScheduler()
+    register_scheduler_jobs(scheduler, timezone_name)
+    scheduler.start()
     logger.info("wfh-logbook started")
     try:
         yield
     finally:
+        scheduler.shutdown(wait=False)
         engine = get_engine()
         engine.dispose()
         logger.info("wfh-logbook stopped")
