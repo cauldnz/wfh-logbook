@@ -1,0 +1,187 @@
+{
+  "ok": true,
+  "result": [
+    {
+      "update_id": 422782463,
+      "message": {
+        "message_id": 4,
+        "from": {
+          "id": 111111111,
+          "is_bot": false,
+          "first_name": "Testuser",
+          "last_name": "Testuser",
+          "language_code": "en"
+        },
+        "chat": {
+          "id": 111111111,
+          "first_name": "Testuser",
+          "last_name": "Testuser",
+          "type": "private"
+        },
+        "date": 1781090763,
+        "text": "Ping"
+      }
+    },
+    {
+      "update_id": 422782464,
+      "message": {
+        "message_id": 5,
+        "from": {
+          "id": 111111111,
+          "is_bot": false,
+          "first_name": "Testuser",
+          "last_name": "Testuser",
+          "language_code": "en"
+        },
+        "chat": {
+          "id": 111111111,
+          "first_name": "Testuser",
+          "last_name": "Testuser",
+          "type": "private"
+        },
+        "date": 1781090998,
+        "text": "/start",
+        "entities": [
+          {
+            "offset": 0,
+            "length": 6,
+            "type": "bot_command"
+          }
+        ]
+      }
+    },
+    {
+      "update_id": 422782465,
+      "message": {
+        "message_id": 6,
+        "from": {
+          "id": 111111111,
+          "is_bot": false,
+          "first_name": "Testuser",
+          "last_name": "Testuser",
+          "language_code": "en"
+        },
+        "chat": {
+          "id": 111111111,
+          "first_name": "Testuser",
+          "last_name": "Testuser",
+          "type": "private"
+        },
+        "date": 1781091003,
+        "text": "/yesterday",
+        "entities": [
+          {
+            "offset": 0,
+            "length": 10,
+            "type": "bot_command"
+          }
+        ]
+      }
+    },
+    {
+      "update_id": 422782466,
+      "message": {
+        "message_id": 7,
+        "from": {
+          "id": 111111111,
+          "is_bot": false,
+          "first_name": "Testuser",
+          "last_name": "Testuser",
+          "language_code": "en"
+        },
+        "chat": {
+          "id": 111111111,
+          "first_name": "Testuser",
+          "last_name": "Testuser",
+          "type": "private"
+        },
+        "date": 1781091012,
+        "text": "-45 lunch"
+      }
+    },
+    {
+      "update_id": 422782467,
+      "callback_query": {
+        "id": "1001632379448497421",
+        "from": {
+          "id": 111111111,
+          "is_bot": false,
+          "first_name": "Testuser",
+          "last_name": "Testuser",
+          "language_code": "en"
+        },
+        "message": {
+          "message_id": 8,
+          "from": {
+            "id": 222222222,
+            "is_bot": true,
+            "first_name": "Testuser",
+            "username": "testbot"
+          },
+          "chat": {
+            "id": 111111111,
+            "first_name": "Testuser",
+            "last_name": "Testuser",
+            "type": "private"
+          },
+          "date": 1781091017,
+          "text": "Fixture capture: tap the button below so the real callback_query payload shape can be recorded.",
+          "reply_markup": {
+            "inline_keyboard": [
+              [
+                {
+                  "text": "\u2705 Tap me",
+                  "callback_data": "confirm:2026-06-10"
+                }
+              ]
+            ]
+          }
+        },
+        "chat_instance": "8274189942624383115",
+        "data": "confirm:2026-06-10"
+      }
+    },
+    {
+      "update_id": 422782468,
+      "callback_query": {
+        "id": "1001632377282125544",
+        "from": {
+          "id": 111111111,
+          "is_bot": false,
+          "first_name": "Testuser",
+          "last_name": "Testuser",
+          "language_code": "en"
+        },
+        "message": {
+          "message_id": 8,
+          "from": {
+            "id": 222222222,
+            "is_bot": true,
+            "first_name": "Testuser",
+            "username": "testbot"
+          },
+          "chat": {
+            "id": 111111111,
+            "first_name": "Testuser",
+            "last_name": "Testuser",
+            "type": "private"
+          },
+          "date": 1781091017,
+          "text": "Fixture capture: tap the button below so the real callback_query payload shape can be recorded.",
+          "reply_markup": {
+            "inline_keyboard": [
+              [
+                {
+                  "text": "\u2705 Tap me",
+                  "callback_data": "confirm:2026-06-10"
+                }
+              ]
+            ]
+          }
+        },
+        "chat_instance": "8274189942624383115",
+        "data": "confirm:2026-06-10"
+      }
+    }
+  ]
+}
