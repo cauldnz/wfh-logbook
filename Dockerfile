@@ -15,12 +15,10 @@ RUN apt-get update \
  && pip install --no-cache-dir uv
 
 WORKDIR /build
-COPY pyproject.toml README.md ./
-COPY app ./app
-COPY alembic.ini ./
-COPY alembic ./alembic
 
 # Install into an isolated prefix we'll copy into the runtime image.
+# Dependencies are an explicit list (not `pip install .`) so the builder
+# stage needs no source files and caches well.
 RUN uv pip install --system --no-cache --target /install \
     "fastapi>=0.115" \
     "uvicorn[standard]>=0.32" \
@@ -62,5 +60,6 @@ USER wfh
 EXPOSE 8088
 VOLUME ["/data"]
 
-# Run migrations then start the app.
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host ${HTTP_HOST} --port ${HTTP_PORT}"]
+# Run migrations then start the app. Invoked as modules: the deps live in
+# /opt/site-packages (via PYTHONPATH); their console-script shims do not.
+CMD ["sh", "-c", "python -m alembic upgrade head && exec python -m uvicorn app.main:app --host ${HTTP_HOST} --port ${HTTP_PORT}"]
