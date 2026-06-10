@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.backups import router as backups_router
 from app.api.days import router as days_router
 from app.api.exports import router as exports_router
 from app.api.health import router as health_router
@@ -193,6 +194,7 @@ def create_app() -> FastAPI:
     app.include_router(days_router)
     app.include_router(exports_router)
     app.include_router(review_queue_router)
+    app.include_router(backups_router)
     app.include_router(web_router)
     # Static assets — vendored, never CDN (CLAUDE.md / HANDOFF §6 Phase 4).
     static_dir = Path(__file__).resolve().parent / "web" / "static"

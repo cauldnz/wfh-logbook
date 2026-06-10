@@ -14,7 +14,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -243,6 +243,34 @@ def year_view(
             "stats": stats,
         },
     )
+
+
+@router.get("/system", response_class=HTMLResponse)
+def system_view(
+    request: Request,
+    db: Session = Depends(get_session),  # noqa: B008
+) -> HTMLResponse:
+    from app.api.backups import list_backups
+    from app.api.health import health as health_endpoint
+
+    ctx = _base_context(db)
+    health = health_endpoint(db)
+    snapshots = list_backups().snapshots
+    return templates.TemplateResponse(
+        request,
+        "system.html",
+        {**ctx, "active": "system", "health": health, "snapshots": snapshots},
+    )
+
+
+@router.post("/system/backup")
+def system_backup_now(
+    db: Session = Depends(get_session),  # noqa: B008
+) -> RedirectResponse:
+    from app.api.backups import backup_now
+
+    backup_now(db)
+    return RedirectResponse(url="/system", status_code=303)
 
 
 @router.get("/day/{target_date}", response_class=HTMLResponse)

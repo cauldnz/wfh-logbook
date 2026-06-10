@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}System &middot; WFH Logbook{% endblock %}
+{% block content %}
+  <div class="card">
+    <h2>System health</h2>
+    <table>
+      <tbody>
+        <tr><th>Database</th><td>{{ "%.1f"|format(health.db_size_bytes / 1024) }} KB{% if health.db_ok %} <span class="badge ok">ok</span>{% else %} <span class="badge error">error</span>{% endif %}</td></tr>
+        <tr><th>Observations (24h)</th><td>{{ health.observations_last_24h }}</td></tr>
+        <tr><th>Last poll succeeded</th><td>{% if health.last_poll_succeeded_at %}{{ health.last_poll_succeeded_at.astimezone(tz).strftime('%Y-%m-%d %H:%M:%S') }}{% else %}never{% endif %}
+          {% if health.consecutive_failures %}<span class="badge error">{{ health.consecutive_failures }} consecutive failure(s)</span>{% endif %}</td></tr>
+        <tr><th>Last sessioniser run</th><td>{% if health.last_sessioniser_run_at %}{{ health.last_sessioniser_run_at.astimezone(tz).strftime('%Y-%m-%d %H:%M:%S') }}{% else %}never{% endif %}</td></tr>
+        <tr><th>Last backup</th><td>{% if health.last_backup_at %}{{ health.last_backup_at.astimezone(tz).strftime('%Y-%m-%d %H:%M:%S') }}{% else %}never{% endif %}</td></tr>
+        <tr><th>Rule version</th><td><code>{{ health.rule_version }}</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <h2 style="margin:0;">Backups</h2>
+      <span class="spacer"></span>
+      <form method="post" action="/system/backup" style="margin:0;">
+        <button type="submit">Back up now</button>
+      </form>
+    </div>
+    <p class="muted">
+      Nightly snapshots run at 02:00 local; retention is 30 daily + 12 monthly.
+      Download snapshots regularly and keep a copy off this machine
+      (ARCHITECTURE &sect;7.1) &mdash; quarterly at minimum.
+    </p>
+    {% if snapshots %}
+      <table>
+        <thead><tr><th>Snapshot</th><th>Size</th><th>Taken</th><th></th></tr></thead>
+        <tbody>
+        {% for s in snapshots %}
+          <tr>
+            <td><code>{{ s.name }}</code></td>
+            <td>{{ "%.1f"|format(s.bytes / 1024) }} KB</td>
+            <td>{{ s.modified_at.astimezone(tz).strftime('%Y-%m-%d %H:%M') }}</td>
+            <td><a class="button muted" href="/api/backups/{{ s.name }}">Download</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">No snapshots yet. The nightly job will create one, or click Back up now.</p>
+    {% endif %}
+    <p class="muted">
+      Restore procedure: see <code>docs/DEPLOYMENT.md</code> &mdash; stop the app,
+      replace the live database file with a snapshot, start.
+    </p>
+  </div>
+{% endblock %}

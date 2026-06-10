@@ -40,7 +40,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app:/opt/site-packages \
     DATA_DIR=/data \
     HTTP_HOST=0.0.0.0 \
-    HTTP_PORT=8088
+    HTTP_PORT=8088 \
+    HOME=/tmp
 
 # Non-root user.
 RUN groupadd --system --gid 1000 wfh \
@@ -55,10 +56,16 @@ COPY --chown=wfh:wfh app ./app
 COPY --chown=wfh:wfh alembic.ini ./alembic.ini
 COPY --chown=wfh:wfh alembic ./alembic
 
+# Default user. Overridable at runtime (e.g. `--user 99:100` on unRAID) —
+# the app writes only under /data and assumes nothing about $HOME beyond
+# the ENV above, so any UID with write access to the volume works.
 USER wfh
 
 EXPOSE 8088
 VOLUME ["/data"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD ["python", "-c", "import urllib.request,sys,os; sys.exit(0 if urllib.request.urlopen(f\"http://localhost:{os.environ.get('HTTP_PORT','8088')}/api/health\").status==200 else 1)"]
 
 # Run migrations then start the app. Invoked as modules: the deps live in
 # /opt/site-packages (via PYTHONPATH); their console-script shims do not.
