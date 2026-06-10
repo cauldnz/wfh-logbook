@@ -93,3 +93,89 @@ def test_inserts_are_allowed(db_session: Session) -> None:
 
     rows = db_session.execute(text("SELECT COUNT(*) FROM observations")).scalar_one()
     assert rows == 5
+
+
+# ----------------------------------------------------- bot_messages (Phase 7)
+
+
+def _make_bot_message() -> "BotMessage":
+    from app.models import BotMessage
+
+    return BotMessage(
+        chat_id=111,
+        direction="in",
+        telegram_update_id=42,
+        telegram_message_id=None,
+        text="/start",
+        raw_json=json.dumps({"update_id": 42}),
+        created_at=datetime(2026, 6, 10, 12, 0, tzinfo=UTC),
+    )
+
+
+def test_orm_update_bot_message_raises(db_session: Session) -> None:
+    msg = _make_bot_message()
+    db_session.add(msg)
+    db_session.commit()
+
+    msg.text = "tampered"
+    with pytest.raises(ImmutableTableError):
+        db_session.commit()
+    db_session.rollback()
+
+
+def test_orm_delete_bot_message_raises(db_session: Session) -> None:
+    msg = _make_bot_message()
+    db_session.add(msg)
+    db_session.commit()
+
+    db_session.delete(msg)
+    with pytest.raises(ImmutableTableError):
+        db_session.commit()
+    db_session.rollback()
+
+
+def test_raw_sql_update_bot_message_blocked_by_trigger(db_session: Session) -> None:
+    msg = _make_bot_message()
+    db_session.add(msg)
+    db_session.commit()
+
+    with pytest.raises((OperationalError, IntegrityError)) as excinfo:
+        db_session.execute(
+            text("UPDATE bot_messages SET text = 'x' WHERE id = :id"), {"id": msg.id}
+        )
+        db_session.commit()
+    assert "append-only" in str(excinfo.value).lower()
+    db_session.rollback()
+
+
+def test_duplicate_update_id_rejected(db_session: Session) -> None:
+    """The partial unique index enforces inbound idempotency (HANDOFF 7.C)."""
+    db_session.add(_make_bot_message())
+    db_session.commit()
+    db_session.add(_make_bot_message())  # same telegram_update_id=42
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+    db_session.rollback()
+
+
+def test_null_update_ids_do_not_collide(db_session: Session) -> None:
+    """Outbound rows (update_id NULL) are exempt from the unique index."""
+    from app.models import BotMessage
+
+    for i in range(3):
+        db_session.add(
+            BotMessage(
+                chat_id=111,
+                direction="out",
+                telegram_update_id=None,
+                telegram_message_id=100 + i,
+                text="hi",
+                raw_json="{}",
+                created_at=datetime(2026, 6, 10, 12, 0, tzinfo=UTC),
+            )
+        )
+    db_session.commit()
+    n = db_session.execute(
+        text("SELECT COUNT(*) FROM bot_messages WHERE direction='out'")
+    ).scalar_one()
+    assert n == 3

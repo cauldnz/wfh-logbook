@@ -73,9 +73,7 @@ def run_fetch() -> None:
         existing = json.loads(RAW_FILE.read_text(encoding="utf-8")).get("result", [])
     seen_ids = {u.get("update_id") for u in existing}
     merged = existing + [u for u in updates if u.get("update_id") not in seen_ids]
-    RAW_FILE.write_text(
-        json.dumps({"ok": True, "result": merged}, indent=2), encoding="utf-8"
-    )
+    RAW_FILE.write_text(json.dumps({"ok": True, "result": merged}, indent=2), encoding="utf-8")
 
     print(f"captured: {len(updates)} update(s) this pull, {len(merged)} total in {RAW_FILE.name}")
     kinds: dict[str, int] = {}
@@ -105,9 +103,7 @@ def run_send_button() -> None:
         raise SystemExit("no raw capture yet — run the plain fetch first")
     merged = json.loads(RAW_FILE.read_text(encoding="utf-8"))["result"]
     chat_ids = {
-        u["message"]["chat"]["id"]
-        for u in merged
-        if "message" in u and "chat" in u["message"]
+        u["message"]["chat"]["id"] for u in merged if "message" in u and "chat" in u["message"]
     }
     if not chat_ids:
         raise SystemExit("no chat id in capture — send the bot a message first")
@@ -122,9 +118,7 @@ def run_send_button() -> None:
                 "callback_query payload shape can be recorded."
             ),
             "reply_markup": {
-                "inline_keyboard": [
-                    [{"text": "✅ Tap me", "callback_data": "confirm:2026-06-10"}]
-                ]
+                "inline_keyboard": [[{"text": "✅ Tap me", "callback_data": "confirm:2026-06-10"}]]
             },
         },
     )

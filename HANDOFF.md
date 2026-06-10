@@ -322,6 +322,9 @@ bot_chats(
   chat_id INTEGER PRIMARY KEY,
   telegram_user_id INTEGER NOT NULL,
   authorised INTEGER NOT NULL DEFAULT 0,
+  rejection_sent INTEGER NOT NULL DEFAULT 0,  -- added 2026-06-10: 7.E's
+                                              -- one-rejection-then-silence
+                                              -- needs restart-durable state
   first_seen_at TEXT NOT NULL,
   last_seen_at TEXT NOT NULL
 )

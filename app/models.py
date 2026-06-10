@@ -21,6 +21,9 @@ from sqlalchemy import (
     UniqueConstraint,
     event,
 )
+from sqlalchemy import (
+    text as text_sql,
+)
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -178,6 +181,62 @@ class PollerState(Base):
     last_backup_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+# --------------------------------------------------------- bot (Phase 7)
+class BotChat(Base):
+    """One row per Telegram chat the bot has interacted with (ARCH §4.5)."""
+
+    __tablename__ = "bot_chats"
+
+    chat_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
+    telegram_user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    authorised: Mapped[bool] = mapped_column(Integer, nullable=False, default=0)
+    # Whether the one-time polite rejection has been sent (HANDOFF 7.E).
+    rejection_sent: Mapped[bool] = mapped_column(Integer, nullable=False, default=0)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class BotState(Base):
+    """Per-chat conversation state (ARCH §4.6). Small, best-effort."""
+
+    __tablename__ = "bot_state"
+
+    chat_id: Mapped[int] = mapped_column(
+        ForeignKey("bot_chats.chat_id"), primary_key=True, autoincrement=False
+    )
+    awaiting: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    awaiting_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class BotMessage(Base):
+    """Append-only audit log of all bot traffic (ARCH §4.7).
+
+    Same immutability rule as observations: no UPDATE, no DELETE, ever.
+    """
+
+    __tablename__ = "bot_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    chat_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    direction: Mapped[str] = mapped_column(String(3), nullable=False)
+    telegram_update_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    telegram_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    raw_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("direction IN ('in','out')", name="ck_bot_messages_direction"),
+        Index(
+            "ux_bot_messages_update_id",
+            "telegram_update_id",
+            unique=True,
+            sqlite_where=text_sql("telegram_update_id IS NOT NULL"),
+        ),
+    )
+
+
 # --------------------------------------------------- ORM-level immutability
 class ImmutableTableError(RuntimeError):
     """Raised when an ORM operation would mutate an append-only table."""
@@ -194,9 +253,5 @@ def _block_mutation(_mapper: Mapper[Any], _connection: Any, target: Any) -> None
 # are belt-and-braces in case raw SQL bypasses the ORM.
 event.listen(Observation, "before_update", _block_mutation, propagate=False)
 event.listen(Observation, "before_delete", _block_mutation, propagate=False)
-
-
-# Foreign-key dependency lookup expected by Phase 7's bot_state→bot_chats join.
-# (Definitions for bot_* tables live in a Phase 7 migration; the table-name
-# constants above keep db.py decoupled.)
-_ = ForeignKey  # re-export placeholder for static analysers
+event.listen(BotMessage, "before_update", _block_mutation, propagate=False)
+event.listen(BotMessage, "before_delete", _block_mutation, propagate=False)
