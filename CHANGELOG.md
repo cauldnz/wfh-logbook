@@ -7,7 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Pending
+
+- **Phase 7 (Telegram bot)**: blocked on capturing real Telegram update
+  payloads for `tests/fixtures/telegram_updates_*.json` per CLAUDE.md
+  "Real Data First". The web UI remains the sole review channel until then.
+- **Classic-controller adapter** (Cloud Key Gen1/Gen2, self-hosted):
+  detected and rejected with guidance; an adapter lands when a real classic
+  fixture is contributed via `tools/fetch_unifi_sample.py`.
+
+## [0.1.0] - 2026-06-10
+
+First working release: a UDM-line UniFi controller feeds an append-only
+observations log, sessionisation derives reviewable daily totals, the web UI
+covers the daily review-and-lock cycle, and the year-end XLSX export carries
+the populated methodology document. Verified live against a real Dream
+Machine. Phases 1-6 of HANDOFF §6 complete; Phase 7 (Telegram) pending.
+
 ### Added
+
 - Initial project documentation: README, ARCHITECTURE, METHODOLOGY template.
 - HANDOFF.md implementation brief for Claude Code, covering seven delivery phases.
 - Phase 7 spec for an optional Telegram bot daily-review channel, served via Cloudflare Tunnel.
@@ -22,6 +40,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   docker-compose.yml (app + optional cloudflared sidecar under `--profile
   tunnel`). Immutability test verifying BOTH ORM hooks and SQL triggers
   block UPDATE/DELETE.
+- **Phase 2 (UniFi client + poller)**: `ControllerAdapter` protocol with a
+  UDM-line adapter built strictly against a sanitised fixture captured from
+  a real controller (`tests/fixtures/unifi_clients_active.json`); key schema
+  facts encoded: SSID lives in `essid`, timestamps are unix-epoch ints,
+  `signal` is dBm. Flavour auto-detection; classic controllers rejected with
+  fixture-contribution guidance. Poller filters to work-SSID + tracked MACs,
+  writes connect rows and DB-derived disconnect-transition rows (restart-safe),
+  tracks consecutive failures for `/api/health`, and never crashes the
+  process on transient controller errors. Devices table seeded from
+  `WORK_DEVICE_MACS`. Verified live: first real observation row captured
+  from the maintainer's network.
 - **Phase 3 (sessionisation)**: Pure `build_sessions_for_date` per
   ARCHITECTURE §5.2 (per-MAC interval state machine → sweep-line union →
   gap-bridging → min-session filter → midnight-crossing attribution to
@@ -46,13 +75,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   typecheck/migrate/revision/docker-build/docker-up/docker-down/export-xlsx).
   SECURITY.md. README quick start with podman/docker, devcontainer pointer,
   export examples, and Telegram + Cloudflare Tunnel setup.
+- Real-network probes in `tools/`: `fetch_unifi_sample.py` (capture +
+  sanitise controller fixtures) and `live_poll_check.py` (one live poll
+  cycle, optionally writing through to the DB).
 
-### Pending
+### Fixed
 
-- **Phase 2 (UniFi client + poller)**: blocked on capturing a real UniFi
-  controller response sample per CLAUDE.md "Real Data First". Will be
-  unblocked in the morning after fetching `tests/fixtures/unifi_clients_*.json`.
-- **Phase 7 (Telegram bot)**: blocked on capturing real Telegram update
-  payloads for `tests/fixtures/telegram_updates_*.json`.
+- Dockerfile: builder stage no longer COPYs files excluded by
+  `.dockerignore`; CMD invokes `python -m alembic` / `python -m uvicorn`
+  because `--target`-installed dependencies don't put console scripts on
+  PATH. Image now builds and serves `/api/health` 200 (verified with
+  podman 5.8.2).
 
-[Unreleased]: https://github.com/USERNAME/REPO/commits/main
+[Unreleased]: https://github.com/USERNAME/REPO/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/USERNAME/REPO/releases/tag/v0.1.0
