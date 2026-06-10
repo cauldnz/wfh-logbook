@@ -172,6 +172,18 @@ On startup, if the `config` row is absent, seed it from `.env`. On subsequent st
 
 Deliver in the order below. Each phase ends with all its acceptance criteria green and is independently mergeable. Do not begin a phase until the previous phase's acceptance criteria pass.
 
+> **Status summary** (commits on `main`):
+>
+> | Phase | Status | Commit(s) |
+> |---|---|---|
+> | 1 — Skeleton and data layer | ✅ Done | `93c9839` |
+> | 2 — UniFi client and poller | ✅ Done (UDM-line verified live; classic pending fixture) | `2aac435`, `c7305b9`, `37f7643` |
+> | 3 — Sessionisation | ✅ Done | `3ff4bc5` |
+> | 4 — Review API and Web UI | ✅ Done | `f0ac153` |
+> | 5 — Exports and backups | ✅ Done | `4f18666` |
+> | 6 — Hardening | ✅ Done | `7f91d8a` |
+> | 7 — Telegram daily-review bot | ⏳ Not started — blocked on real Telegram payload capture (CLAUDE.md Real Data First) | — |
+
 ### Phase 1 — Skeleton and data layer
 
 **Deliverables**
@@ -194,10 +206,10 @@ Deliver in the order below. Each phase ends with all its acceptance criteria gre
 
 **Deliverables**
 
-- `app/unifi/client.py`: an HTTP client that authenticates to the local UniFi controller, handles both UDM and classic controller URL flavours, and exposes `list_active_clients()` returning a normalised list of dicts containing at minimum `mac`, `ssid`, `last_seen`, `signal`, and the raw payload.
+- `app/unifi/client.py`: an HTTP client that authenticates to the local UniFi controller and exposes `list_active_clients()` returning a normalised list of records containing at minimum `mac`, `ssid`, `last_seen`, `signal`, and the raw payload. Controller flavours are handled via a `ControllerAdapter` protocol: **only flavours with a committed real-capture fixture get an adapter** (per CLAUDE.md Real Data First). UDM-line is implemented and verified live. Classic controllers (Cloud Key Gen1/Gen2, self-hosted) are *detected* and rejected with guidance pointing at `tools/fetch_unifi_sample.py` — a `ClassicAdapter` lands when a real classic fixture is contributed. *(Spec amended 2026-06-10: original text said "handles both UDM and classic URL flavours"; shipping a classic parser against an unseen schema would violate the Real Data First rule, so classic support is gated on fixture capture.)*
 - `app/unifi/poller.py`: APScheduler job that runs every `POLL_INTERVAL_SECONDS`, calls `list_active_clients()`, filters to the work SSID and configured MACs, and writes `observations` rows per §5.1 of `ARCHITECTURE.md` including disconnect-transition rows.
 - Surface poller state on `/api/health`: `last_poll_attempted_at`, `last_poll_succeeded_at`, `consecutive_failures`.
-- `tests/test_unifi_client.py` with fixture JSON for at least UDM and classic responses, exercising the normalisation.
+- `tests/test_unifi_client.py` with fixture JSON exercising the normalisation for every supported flavour (currently UDM; classic fixture wanted — see above).
 - Integration-style test that runs the poller against an in-memory fake controller and verifies observations land correctly, including transition rows.
 
 **Acceptance**
