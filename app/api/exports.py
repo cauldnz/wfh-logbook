@@ -51,7 +51,7 @@ def export_xlsx(
 
 @router.get("/export.bundle", response_class=Response)
 def export_bundle(
-    fy: str = Query(..., description="AU financial year, e.g. 2025-26"),  # noqa: B008
+    fy: str = Query(..., description="AU financial year, e.g. 2025-26"),
     db: Session = Depends(get_session),  # noqa: B008
 ) -> Response:
     """Audit bundle: zip of XLSX + methodology + raw CSVs + SHA-256 manifest."""
