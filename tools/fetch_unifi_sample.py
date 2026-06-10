@@ -37,6 +37,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# Allow running this script directly from cmd.exe / PowerShell without
+# requiring `pip install -e .` to have been done — add the repo root to
+# sys.path so `from app.config import ...` resolves.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import httpx
 
 from app.config import get_settings
@@ -50,10 +55,13 @@ RAW_FILES = {
     "wlan": FIXTURES_DIR / "unifi_wlanconf.raw.json",
     "devices": FIXTURES_DIR / "unifi_devices.raw.json",
 }
+# Devices (stat/device) intentionally NOT sanitised+committed: the response
+# is large (>100KB) with deeply nested arrays of every adjacent device's
+# BSSID/IPv6/etc., and Phase 2's poller only reads stat/sta. The raw is
+# still saved (gitignored) for ad-hoc diagnostics.
 SANITISED_FILES = {
     "active": FIXTURES_DIR / "unifi_clients_active.json",
     "wlan": FIXTURES_DIR / "unifi_wlanconf.json",
-    "devices": FIXTURES_DIR / "unifi_devices.json",
 }
 
 
@@ -154,25 +162,45 @@ def _mask_mac(mac: str, salt: int = 0) -> str:
 def _sanitise_client(c: dict[str, Any], work_ssid: str, idx: int) -> dict[str, Any]:
     """Anonymise a single client row while preserving schema.
 
-    Keeps every field name. Replaces:
-    - mac, ap_mac, gw_mac → placeholder MACs (stable per index)
-    - hostname, name → "device-N"
-    - ip → 10.0.0.N
-    - ssid → "WFH" if it matches WORK_SSID, otherwise "GUEST-SSID"
+    Keeps every field name and type. Replaces PII-bearing values with stable
+    placeholders. Covers the UDM-line `stat/sta` shape observed in
+    tests/fixtures/unifi_clients_active.raw.json.
     """
+    mac_fields = {"mac", "ap_mac", "gw_mac", "sw_mac", "bssid", "last_uplink_mac"}
+    ipv4_fields = {"ip", "fixed_ip", "last_ip"}
+    name_fields = {"hostname", "name", "oui", "last_uplink_name"}
+    # UniFi-internal IDs — site/account-specific, redact for stability.
+    id_fields = {
+        "_id",
+        "anon_client_id",
+        "user_id",
+        "network_id",
+        "site_id",
+        "wlanconf_id",
+        "last_connection_network_id",
+        "user_group_id_computed",
+        "usergroup_id",
+    }
+
     out = dict(c)
     for k in list(out.keys()):
         v = out[k]
-        if k == "mac" or k.endswith("_mac"):
+        if k in mac_fields or k.endswith("_mac"):
             out[k] = _mask_mac(str(v), idx)
-        elif k in ("hostname", "name", "oui"):
-            out[k] = f"device-{idx}"
-        elif k == "ip" or k == "fixed_ip" or k.endswith("_ip"):
+        elif k in ipv4_fields or (k.endswith("_ip") and isinstance(v, str)):
             out[k] = f"10.0.0.{idx + 10}"
-        elif k == "ssid" or k == "essid":
+        elif k in name_fields:
+            out[k] = f"AP-{idx}" if k == "last_uplink_name" else f"device-{idx}"
+        elif k in ("ipv6_addresses", "last_ipv6"):
+            out[k] = ["fe80::aa:bb:cc:dd"]
+        elif k in id_fields and isinstance(v, str):
+            out[k] = f"id-{idx}"
+        elif k in ("network", "last_connection_network_name") and isinstance(v, str):
+            # Leave "Default" alone; redact other names that might be PII.
+            if v != "Default":
+                out[k] = "network-X"
+        elif k in ("ssid", "essid"):
             out[k] = "WFH" if v == work_ssid else "OTHER-SSID"
-        elif k == "user_id" and isinstance(v, str):
-            out[k] = f"user-{idx}"
         elif k == "note" and v:
             out[k] = "(redacted)"
     return out
@@ -205,27 +233,6 @@ def _sanitise_wlan(payload: dict[str, Any], work_ssid: str) -> dict[str, Any]:
     return {**payload, "data": out_data}
 
 
-def _sanitise_devices(payload: dict[str, Any]) -> dict[str, Any]:
-    if "data" not in payload or not isinstance(payload["data"], list):
-        return payload
-    out_data: list[dict[str, Any]] = []
-    for i, d in enumerate(payload["data"]):
-        dc = dict(d)
-        for k in list(dc.keys()):
-            v = dc[k]
-            if k == "mac" or k.endswith("_mac"):
-                dc[k] = _mask_mac(str(v), i)
-            elif k in ("name", "model_in_lts", "model_in_eol", "hostname"):
-                if k == "name":
-                    dc[k] = f"AP-{i}"
-            elif k == "ip" or k.endswith("_ip"):
-                dc[k] = f"10.0.0.{i + 1}"
-            elif k == "serial":
-                dc[k] = "REDACTED"
-        out_data.append(dc)
-    return {**payload, "data": out_data}
-
-
 # ------------------------------------------------------------------ runner
 
 
@@ -235,13 +242,19 @@ def run_fetch() -> None:
         raise SystemExit(
             "UNIFI_HOST and UNIFI_USERNAME must be set in .env before running this script."
         )
+    host = settings.unifi_host
+    if not host.startswith(("http://", "https://")):
+        # Friendly auto-fix for the common omission. Home UniFi controllers
+        # use self-signed HTTPS, so https:// is the right default.
+        logger.warning("UNIFI_HOST has no scheme; assuming https:// (was %s)", host)
+        host = "https://" + host
     FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
 
-    logger.info("connecting to %s as %s", settings.unifi_host, settings.unifi_username)
+    logger.info("connecting to %s as %s", host, settings.unifi_username)
     with httpx.Client(verify=settings.unifi_verify_tls, timeout=15.0, follow_redirects=True) as c:
-        csrf = _login(c, settings.unifi_host, settings.unifi_username, settings.unifi_password)
-        prefix = _detect_path_prefix(c, settings.unifi_host, settings.unifi_site, csrf)
-        base = f"{settings.unifi_host.rstrip('/')}{prefix}/s/{settings.unifi_site}"
+        csrf = _login(c, host, settings.unifi_username, settings.unifi_password)
+        prefix = _detect_path_prefix(c, host, settings.unifi_site, csrf)
+        base = f"{host.rstrip('/')}{prefix}/s/{settings.unifi_site}"
 
         active = _fetch(c, f"{base}/stat/sta", csrf)
         wlan = _fetch(c, f"{base}/rest/wlanconf", csrf)
@@ -280,16 +293,11 @@ def run_sanitise() -> None:
         )
     active = json.loads(RAW_FILES["active"].read_text(encoding="utf-8"))
     wlan = json.loads(RAW_FILES["wlan"].read_text(encoding="utf-8"))
-    devices = json.loads(RAW_FILES["devices"].read_text(encoding="utf-8"))
-
     SANITISED_FILES["active"].write_text(
         json.dumps(_sanitise_active(active, settings.work_ssid), indent=2), encoding="utf-8"
     )
     SANITISED_FILES["wlan"].write_text(
         json.dumps(_sanitise_wlan(wlan, settings.work_ssid), indent=2), encoding="utf-8"
-    )
-    SANITISED_FILES["devices"].write_text(
-        json.dumps(_sanitise_devices(devices), indent=2), encoding="utf-8"
     )
     for k, p in SANITISED_FILES.items():
         logger.info("wrote sanitised %s (%s)", k, p)
