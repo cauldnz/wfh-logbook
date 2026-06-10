@@ -58,9 +58,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"    UNTRACKED on work SSID: {c.mac} ({c.hostname}) — add to WORK_DEVICE_MACS?")
 
     if args.write:
-        from alembic import command
         from alembic.config import Config as AlembicConfig
 
+        from alembic import command
         from app.db import get_sessionmaker, init_engine
         from app.main import seed_config_if_missing, seed_devices_if_missing
         from app.unifi.poller import poll_once
