@@ -83,6 +83,10 @@ ignore = [
     "N802",  # test function names
 ]
 "alembic/env.py" = ["T20"]
+"tools/**" = [
+    "T20",   # operator-facing print() in real-network probe scripts
+    "S501",  # verify=False is intentional for self-signed home controllers
+]
 
 [tool.ruff.format]
 quote-style = "double"

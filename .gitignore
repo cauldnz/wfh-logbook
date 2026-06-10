@@ -87,6 +87,10 @@ exports/
 *.log
 logs/
 
+# Raw real-network probe responses — may contain MACs of every device in
+# the house. The sanitised siblings (without .raw) are committed.
+tests/fixtures/*.raw.json
+
 # OS junk
 Thumbs.db
 ehthumbs.db
