@@ -87,6 +87,10 @@ ignore = [
     "T20",   # operator-facing print() in real-network probe scripts
     "S501",  # verify=False is intentional for self-signed home controllers
 ]
+# The adjustment grammar REJECTS typographic minus lookalikes (HANDOFF 7.F);
+# the parser and its tests must therefore contain those exact characters.
+"app/notifier/grammar.py" = ["RUF001", "RUF002", "RUF003"]
+"tests/test_telegram_grammar.py" = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.format]
 quote-style = "double"
