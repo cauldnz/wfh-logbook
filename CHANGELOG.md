@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Review queue** (`/review-queue`, `GET /api/review-queue`): days needing
+  attention — unlocked backlog (no statute of limitations), anomalous days,
+  detected in-session data gaps (poller outage / host sleep, distinguished
+  from genuine absence via disconnect rows), heavy-bridging days. Gap windows
+  shown with local times for corroborate-and-adjust per METHODOLOGY §4.6.
+- **Audit bundle export** (`GET /api/export.bundle?fy=`, year-view button):
+  one zip with the XLSX, populated methodology, raw observations/sessions
+  CSVs, ALL daily-summary versions, and a manifest carrying SHA-256 hashes,
+  row counts, config snapshot, and rule version. Stdlib only.
+- **Year-view statistics**: weekly average, projected year-end hours at
+  current pace, locked-progress, per-weekday averages. Hours only — no
+  dollar figures (HANDOFF §2.5), enforced by test.
+- **NAS deployment + backups UX**: `/system` page with health summary,
+  Back-up-now, snapshot list + downloads; `POST /api/backup`,
+  `GET /api/backups[/{name}]` with strict name validation; image
+  HEALTHCHECK + arbitrary-UID support (verified live under unRAID's
+  `--user 99:100`); GHCR publish workflow; `docs/DEPLOYMENT.md` with
+  unRAID bring-up and a test-automated restore procedure.
+
 ### Pending
 
 - **Phase 7 (Telegram bot)**: blocked on capturing real Telegram update

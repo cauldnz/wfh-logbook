@@ -183,7 +183,7 @@ Deliver in the order below. Each phase ends with all its acceptance criteria gre
 > | 5 — Exports and backups | ✅ Done | `4f18666` |
 > | 6 — Hardening | ✅ Done | `7f91d8a` |
 > | 7 — Telegram daily-review bot | ⏳ Not started — blocked on real Telegram payload capture (CLAUDE.md Real Data First) | — |
-> | 8 — v0.2 enhancements (review queue, audit bundle, year stats, NAS deployment + backups UX) | 🔨 In progress | — |
+> | 8 — v0.2 enhancements (review queue, audit bundle, year stats, NAS deployment + backups UX) | ✅ Done | `ae533ef`, `70c5eb9`, `76f1763`, `cca0d65` |
 
 ### Phase 1 — Skeleton and data layer
 
