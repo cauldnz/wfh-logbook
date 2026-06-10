@@ -49,6 +49,26 @@ def export_xlsx(
     )
 
 
+@router.get("/export.bundle", response_class=Response)
+def export_bundle(
+    fy: str = Query(..., description="AU financial year, e.g. 2025-26"),  # noqa: B008
+    db: Session = Depends(get_session),  # noqa: B008
+) -> Response:
+    """Audit bundle: zip of XLSX + methodology + raw CSVs + SHA-256 manifest."""
+    from app.exporters.bundle import write_bundle
+
+    fy_start, fy_end = _fy_bounds(fy)
+    buf = BytesIO()
+    write_bundle(db, fy_start, fy_end, fy, buf)
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="wfh-logbook-audit-{fy}.zip"',
+        },
+    )
+
+
 @router.get("/export.csv", response_class=Response)
 def export_csv(
     from_: date = Query(..., alias="from"),  # noqa: B008
