@@ -29,6 +29,7 @@ from app.backup.snapshot import run_snapshot
 from app.config import Settings, get_settings
 from app.db import get_engine, get_sessionmaker, init_engine, install_triggers_now
 from app.models import Config, Device, PollerState
+from app.notifier.webhook import router as telegram_webhook_router
 from app.sessions.scheduler import register_scheduler_jobs
 from app.web.routes import router as web_router
 
@@ -122,7 +123,9 @@ def seed_devices_if_missing(db: Session, settings: Settings) -> None:
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    import asyncio
+
     from app.logging_config import configure_logging
 
     settings = get_settings()
@@ -171,10 +174,52 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         logger.info("unifi: no UNIFI_HOST/WORK_SSID configured; poller disabled")
 
     scheduler.start()
+
+    # Telegram bot (Phase 7). Disabled entirely with one INFO line when no
+    # token is configured (HANDOFF 7.G) — the rest of the app is unaffected.
+    telegram_client = None
+    polling_task: asyncio.Task[None] | None = None
+    polling_stop: asyncio.Event | None = None
+    if settings.telegram_bot_token:
+        from app.notifier.polling import polling_loop
+        from app.notifier.telegram import TelegramClient
+
+        telegram_client = TelegramClient(settings.telegram_bot_token)
+        app.state.telegram_client = telegram_client
+        if settings.telegram_mode == "webhook":
+            if settings.public_base_url and settings.telegram_webhook_secret:
+                try:
+                    telegram_client.set_webhook(
+                        f"{settings.public_base_url.rstrip('/')}"
+                        f"/webhook/telegram/{settings.telegram_webhook_secret}",
+                        settings.telegram_webhook_secret,
+                    )
+                except Exception:
+                    logger.exception("telegram: webhook registration failed")
+            else:
+                logger.error(
+                    "telegram: webhook mode needs PUBLIC_BASE_URL and "
+                    "TELEGRAM_WEBHOOK_SECRET; bot inactive"
+                )
+        else:  # polling
+            polling_stop = asyncio.Event()
+            polling_task = asyncio.get_running_loop().create_task(
+                polling_loop(telegram_client, settings, polling_stop)
+            )
+        logger.info("telegram: bot enabled (mode=%s)", settings.telegram_mode)
+    else:
+        logger.info("telegram: no TELEGRAM_BOT_TOKEN configured; bot disabled")
+
     logger.info("wfh-logbook started")
     try:
         yield
     finally:
+        if polling_stop is not None:
+            polling_stop.set()
+        if polling_task is not None:
+            polling_task.cancel()
+        if telegram_client is not None:
+            telegram_client.close()
         scheduler.shutdown(wait=False)
         if adapter is not None:
             adapter.close()
@@ -195,6 +240,7 @@ def create_app() -> FastAPI:
     app.include_router(exports_router)
     app.include_router(review_queue_router)
     app.include_router(backups_router)
+    app.include_router(telegram_webhook_router)
     app.include_router(web_router)
     # Static assets — vendored, never CDN (CLAUDE.md / HANDOFF §6 Phase 4).
     static_dir = Path(__file__).resolve().parent / "web" / "static"

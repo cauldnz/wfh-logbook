@@ -28,18 +28,26 @@ def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> config_mod.Sett
     """Test-local settings pointing at a tmp data dir."""
     data_dir = tmp_path / "data"
     data_dir.mkdir()
-    # Strip any host env that might bleed in.
+    # Neutralise live credentials. IMPORTANT: set to EMPTY, do not delenv —
+    # pydantic-settings falls back to the repo-root `.env` file for any var
+    # absent from the process environment, and the developer's real `.env`
+    # carries live UniFi credentials and a live bot token. A deleted var
+    # would silently hand tests the REAL controller/bot (observed: the app
+    # lifespan started a real Telegram polling loop mid-suite).
     for var in (
         "UNIFI_HOST",
         "UNIFI_USERNAME",
         "UNIFI_PASSWORD",
-        "WORK_SSID",
         "WORK_DEVICE_MACS",
         "TELEGRAM_BOT_TOKEN",
         "TELEGRAM_ALLOWED_USER_IDS",
+        "TELEGRAM_WEBHOOK_SECRET",
+        "PUBLIC_BASE_URL",
         "CLOUDFLARE_TUNNEL_TOKEN",
     ):
-        monkeypatch.delenv(var, raising=False)
+        monkeypatch.setenv(var, "")
+    # Literal-typed: empty string would fail validation; pin a valid value.
+    monkeypatch.setenv("TELEGRAM_MODE", "webhook")
     monkeypatch.setenv("DATA_DIR", str(data_dir))
     monkeypatch.setenv("WORK_SSID", "WFH-TEST")
     monkeypatch.setenv("RULE_VERSION", "2026.1")
