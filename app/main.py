@@ -26,7 +26,7 @@ from app.api.health import router as health_router
 from app.backup.snapshot import run_snapshot
 from app.config import Settings, get_settings
 from app.db import get_engine, get_sessionmaker, init_engine, install_triggers_now
-from app.models import Config, PollerState
+from app.models import Config, Device, PollerState
 from app.sessions.scheduler import register_scheduler_jobs
 from app.web.routes import router as web_router
 
@@ -95,6 +95,30 @@ def ensure_poller_state(db: Session) -> PollerState:
     return state
 
 
+def seed_devices_if_missing(db: Session, settings: Settings) -> None:
+    """Insert ``devices`` rows from WORK_DEVICE_MACS for MACs not yet tracked.
+
+    `.env` seeds; the DB is authoritative thereafter (same contract as the
+    config row). An existing active row with a different label is reported
+    but never modified — label changes are a deliberate DB edit, and MAC
+    rotation is handled by end-dating per ARCHITECTURE §4.4.
+    """
+    for mac, label in settings.parsed_device_macs():
+        existing = db.execute(
+            select(Device).where(Device.mac == mac).where(Device.active_to.is_(None))
+        ).scalar_one_or_none()
+        if existing is None:
+            db.add(Device(mac=mac, label=label, active_from=_utcnow(), active_to=None))
+            logger.info("devices: tracking %s as %r (seeded from .env)", mac, label)
+        elif existing.label != label:
+            logger.warning(
+                "devices: %s has label %r in DB but %r in .env; DB wins",
+                mac,
+                existing.label,
+                label,
+            )
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     from app.logging_config import configure_logging
@@ -107,8 +131,10 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     with SessionLocal() as db:
         cfg = seed_config_if_missing(db, settings)
         ensure_poller_state(db)
+        seed_devices_if_missing(db, settings)
         db.commit()
         timezone_name = cfg.local_timezone
+        work_ssid = cfg.work_ssid
 
     scheduler = BackgroundScheduler()
     register_scheduler_jobs(scheduler, timezone_name)
@@ -124,12 +150,32 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         coalesce=True,
         max_instances=1,
     )
+
+    # UniFi poller (Phase 2). Disabled with a single INFO line if no
+    # controller is configured — the rest of the app works without it.
+    adapter = None
+    if settings.unifi_host and work_ssid:
+        from app.unifi.client import create_adapter
+        from app.unifi.poller import register_poller_job
+
+        try:
+            adapter = create_adapter(settings)
+            register_poller_job(scheduler, adapter, settings, work_ssid)
+        except Exception:
+            # Startup must not die because the controller is unreachable or
+            # unsupported; health surfaces the absence of polls.
+            logger.exception("unifi: poller not started")
+    else:
+        logger.info("unifi: no UNIFI_HOST/WORK_SSID configured; poller disabled")
+
     scheduler.start()
     logger.info("wfh-logbook started")
     try:
         yield
     finally:
         scheduler.shutdown(wait=False)
+        if adapter is not None:
+            adapter.close()
         engine = get_engine()
         engine.dispose()
         logger.info("wfh-logbook stopped")
