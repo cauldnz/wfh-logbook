@@ -14,7 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
-from app.models import ImmutableTableError, Observation
+from app.models import BotMessage, ImmutableTableError, Observation
 
 
 def _make_observation() -> Observation:
@@ -98,9 +98,7 @@ def test_inserts_are_allowed(db_session: Session) -> None:
 # ----------------------------------------------------- bot_messages (Phase 7)
 
 
-def _make_bot_message() -> "BotMessage":
-    from app.models import BotMessage
-
+def _make_bot_message() -> BotMessage:
     return BotMessage(
         chat_id=111,
         direction="in",
