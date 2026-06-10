@@ -133,6 +133,23 @@ def review(
     )
 
 
+@router.get("/review-queue", response_class=HTMLResponse)
+def review_queue_view(
+    request: Request,
+    db: Session = Depends(get_session),  # noqa: B008
+) -> HTMLResponse:
+    from app.api.review_queue import build_review_queue
+
+    ctx = _base_context(db)
+    today_local = datetime.now(ctx["tz"]).date()
+    queue = build_review_queue(db, today_local)
+    return templates.TemplateResponse(
+        request,
+        "review_queue.html",
+        {**ctx, "active": "queue", "queue": queue},
+    )
+
+
 @router.get("/calendar", response_class=HTMLResponse)
 def calendar_view(
     request: Request,

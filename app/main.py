@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from app.api.days import router as days_router
 from app.api.exports import router as exports_router
 from app.api.health import router as health_router
+from app.api.review_queue import router as review_queue_router
 from app.backup.snapshot import run_snapshot
 from app.config import Settings, get_settings
 from app.db import get_engine, get_sessionmaker, init_engine, install_triggers_now
@@ -191,6 +192,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(days_router)
     app.include_router(exports_router)
+    app.include_router(review_queue_router)
     app.include_router(web_router)
     # Static assets — vendored, never CDN (CLAUDE.md / HANDOFF §6 Phase 4).
     static_dir = Path(__file__).resolve().parent / "web" / "static"

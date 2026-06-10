@@ -12,6 +12,7 @@
     <h1>WFH Logbook</h1>
     <nav>
       <a href="/" class="{% if active == 'review' %}active{% endif %}">Review</a>
+      <a href="/review-queue" class="{% if active == 'queue' %}active{% endif %}">Queue</a>
       <a href="/calendar" class="{% if active == 'calendar' %}active{% endif %}">Calendar</a>
       <a href="/year/{{ current_fy }}" class="{% if active == 'year' %}active{% endif %}">Year</a>
     </nav>
