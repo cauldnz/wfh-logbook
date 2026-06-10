@@ -90,3 +90,8 @@ def configure_logging(level: str = "INFO", *, structured: bool = True) -> None:
         handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
     root.addHandler(handler)
     root.setLevel(level)
+    # httpx logs every request URL at INFO — for Telegram that URL embeds
+    # the bot token (observed live). Secrets must never reach the log at
+    # INFO (CLAUDE.md), so the httpx/httpcore loggers are pinned to WARNING.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
