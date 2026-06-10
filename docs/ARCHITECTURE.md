@@ -313,6 +313,9 @@ JSON over HTTP on port 8088 by default. No authentication beyond binding to the 
 - `POST /api/days/{date}/resessionise` — re-run sessionisation for this date.
 - `GET /api/export.xlsx?fy=2025-26` — XLSX export for a financial year.
 - `GET /api/export.csv?from=&to=` — CSV export for a range.
+- `GET /api/export.bundle?fy=2025-26` — audit bundle: zip of XLSX + populated methodology + raw CSVs (observations, sessions, all daily-summary versions) + SHA-256 integrity manifest (HANDOFF §6 Phase 8.B).
+- `GET /api/review-queue` — dates needing attention: unlocked backlog, anomalous days, in-session data gaps, heavy-bridging days (HANDOFF §6 Phase 8.A).
+- `POST /api/backup` / `GET /api/backups` / `GET /api/backups/{name}` — on-demand snapshot, snapshot listing, snapshot download (HANDOFF §6 Phase 8.D).
 - `GET /api/health` — liveness/readiness, last successful poll timestamp, last successful sessioniser run, last successful backup, bot mode and webhook status.
 
 ### 6.3 Web UI
@@ -333,6 +336,8 @@ Outbound traffic in both modes goes directly to `https://api.telegram.org`. Auth
 ### 7.1 Backups
 
 Nightly at 02:00 local: SQLite `VACUUM INTO` to `/data/backups/wfh-logbook-YYYYMMDD.sqlite`. Retain 30 daily, 12 monthly. The user is responsible for off-box copies; the README documents a recommended quarterly procedure.
+
+On-demand snapshots can also be triggered (`POST /api/backup`) and snapshots listed/downloaded from the `/system` page — the download endpoint exists to make off-box copies easy, not to replace them. Restore is documented and test-exercised: stop the app, replace the live SQLite file with a snapshot, start (see `docs/DEPLOYMENT.md`).
 
 ### 7.2 Health and alerting
 

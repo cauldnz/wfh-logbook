@@ -183,6 +183,7 @@ Deliver in the order below. Each phase ends with all its acceptance criteria gre
 > | 5 — Exports and backups | ✅ Done | `4f18666` |
 > | 6 — Hardening | ✅ Done | `7f91d8a` |
 > | 7 — Telegram daily-review bot | ⏳ Not started — blocked on real Telegram payload capture (CLAUDE.md Real Data First) | — |
+> | 8 — v0.2 enhancements (review queue, audit bundle, year stats, NAS deployment + backups UX) | 🔨 In progress | — |
 
 ### Phase 1 — Skeleton and data layer
 
@@ -417,6 +418,49 @@ Once an adjustment is successfully parsed while `awaiting='adjustment'`, the bot
 - An unauthorised user messaging the bot is rejected exactly once and then silently ignored.
 - With `TELEGRAM_BOT_TOKEN` unset, the rest of the app builds, starts, and serves the web UI normally.
 - Cloudflare Tunnel sidecar starts as part of `docker compose up` and the Telegram webhook is reachable through the public hostname.
+
+### Phase 8 — v0.2 enhancements
+
+*(Added 2026-06-10 with maintainer approval: four features selected from a proposal round. None changes how hours are derived — `METHODOLOGY.md` and `rule_version` are untouched.)*
+
+**8.A Review queue and data-quality flags**
+
+- `GET /api/review-queue`: dates needing attention, categorised:
+  - **unlocked backlog** — latest version unlocked and date before today;
+  - **anomalous** — claimed_seconds exceeds the daily cap (existing flag, surfaced);
+  - **data gaps** — a hole longer than `2 × GAP_BRIDGE_MINUTES` in the per-MAC observation stream *while a session was open* (the poller writes ~every `POLL_INTERVAL_SECONDS` for connected devices, so an in-session hole means poller outage or host sleep, not absence from the SSID);
+  - **heavy bridging** — total bridged seconds > 15% of session seconds, or ≥ 4 bridges in one session.
+- `/review-queue` UI page listing each category, oldest first, linking to day detail. Data-gap days show the gap window(s) so the user can corroborate and adjust per METHODOLOGY §4.6.
+- Gap detection is read-only analysis of `observations`; nothing is written.
+
+**8.B Audit bundle export**
+
+- `GET /api/export.bundle?fy=YYYY-YY` returns a zip:
+  - the Phase 5 XLSX;
+  - `methodology.md` populated from the live config (same substitution as the XLSX sheet);
+  - `observations.csv`, `sessions.csv`, `daily_summaries.csv` (ALL versions, not just latest) for the FY window;
+  - `manifest.json`: generated-at timestamp, app version, rule_version, config snapshot, per-file row counts and SHA-256 hashes.
+- Download button on the year view. Stdlib `zipfile`/`hashlib` only — no new dependencies.
+
+**8.C Year-view statistics (hours only)**
+
+- Extend `/year/{fy}`: running weekly average, projected year-end hours at current pace (claimed-to-date ÷ elapsed-FY-fraction), locked/unlocked progress, per-weekday averages.
+- Hard constraint §2.5 still applies: no dollar figures, no deductibility claims in the UI.
+
+**8.D NAS/Docker deployment readiness and backups UX**
+
+- Image: `HEALTHCHECK` directive; runs under arbitrary UID (`--user 99:100` for unRAID) — no writes outside `/data`, no `$HOME` assumptions.
+- `.github/workflows/docker.yml`: build + push `ghcr.io/<owner>/wfh-logbook` on tag push (and `latest` on main).
+- `docs/DEPLOYMENT.md`: unRAID bring-up (volume mapping, port, env), generic `docker run`/compose, and a **tested restore procedure** (stop container → replace SQLite from snapshot → start).
+- Backups UX: `POST /api/backup` (snapshot now), `GET /api/backups` (list), `GET /api/backups/{name}` (download; name validated against the snapshot pattern — no path traversal). `/system` UI page: health summary, snapshot list with download links, Back-up-now button. Retention rules unchanged (30 daily / 12 monthly).
+- Off-box copies remain the user's responsibility (constraint §9.2) — the download endpoint just makes them easy.
+
+**Acceptance**
+
+- Review queue lists a seeded gap day, an anomalous day, and an unlocked-backlog day, each linking to detail; a clean locked day does not appear.
+- The bundle zip opens, every CSV row count matches the manifest, and every SHA-256 in the manifest matches the file bytes.
+- Year view renders projections for a partially-elapsed FY without dollar figures.
+- The image passes `podman build` + smoke run under `--user 99:100`; backup-now produces a snapshot listed and downloadable via the UI; the restore procedure is exercised by an automated test against a temp DB.
 
 ## 7. Testing standards
 
