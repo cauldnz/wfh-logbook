@@ -179,9 +179,27 @@ def year_view(
     request: Request,
     db: Session = Depends(get_session),  # noqa: B008
 ) -> HTMLResponse:
+    from app.web.year_stats import DayStat, compute_year_stats
+
     ctx = _base_context(db)
     fy_start, fy_end = fy_bounds(fy)
     listing = list_days(db, fy_start, fy_end)
+
+    today_local = datetime.now(ctx["tz"]).date()
+    stats = compute_year_stats(
+        [
+            DayStat(
+                local_date=d.local_date,
+                claimed_seconds=d.latest.claimed_seconds,
+                locked=d.latest.locked,
+            )
+            for d in listing.days
+            if d.latest is not None
+        ],
+        fy_start,
+        fy_end,
+        today_local,
+    )
 
     total_claimed_seconds = 0
     locked_count = 0
@@ -222,6 +240,7 @@ def year_view(
             "unlocked_count": unlocked_count,
             "anomalous_count": anomalous_count,
             "months": sorted(months.values(), key=lambda m: m["label"]),
+            "stats": stats,
         },
     )
 

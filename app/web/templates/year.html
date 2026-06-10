@@ -30,6 +30,37 @@
   </div>
 
   <div class="card">
+    <h3>Statistics</h3>
+    <div class="row" style="gap:2rem;">
+      <div>
+        <div class="hours">{{ "%.1f"|format(stats.weekly_average_hours) }} h</div>
+        <div class="hours-sub">weekly average ({{ stats.elapsed_days }} of {{ stats.total_days }} FY days elapsed)</div>
+      </div>
+      {% if stats.projected_year_end_hours is not none %}
+      <div>
+        <div class="hours">{{ "%.0f"|format(stats.projected_year_end_hours) }} h</div>
+        <div class="hours-sub">projected year-end at current pace</div>
+      </div>
+      {% endif %}
+      <div>
+        <div class="hours">{{ "%.0f"|format(stats.locked_fraction * 100) }}%</div>
+        <div class="hours-sub">of recorded days locked ({{ stats.locked_days }}/{{ stats.days_with_data }})</div>
+      </div>
+    </div>
+    {% if stats.weekday_averages %}
+    <table style="margin-top:1rem;">
+      <thead><tr><th>Weekday</th><th>Average hours</th><th>Days recorded</th></tr></thead>
+      <tbody>
+      {% for w in stats.weekday_averages %}
+        <tr><td>{{ w.weekday }}</td><td>{{ "%.2f"|format(w.average_hours) }}</td><td>{{ w.day_count }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    <p class="muted">Projections are hours at current pace only &mdash; not a claim about deductibility or dollar value (METHODOLOGY &sect;7).</p>
+  </div>
+
+  <div class="card">
     <h3>Per-month subtotals</h3>
     <table>
       <thead><tr><th>Month</th><th>Locked days</th><th>Unlocked days</th><th>Claimed hours</th></tr></thead>
