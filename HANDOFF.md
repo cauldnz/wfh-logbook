@@ -182,7 +182,7 @@ Deliver in the order below. Each phase ends with all its acceptance criteria gre
 > | 4 — Review API and Web UI | ✅ Done | `f0ac153` |
 > | 5 — Exports and backups | ✅ Done | `4f18666` |
 > | 6 — Hardening | ✅ Done | `7f91d8a` |
-> | 7 — Telegram daily-review bot | ⏳ Not started — blocked on real Telegram payload capture (CLAUDE.md Real Data First) | — |
+> | 7 — Telegram daily-review bot | ✅ Done (polling mode live; webhook mode built + tested, pending Cloudflare Tunnel on the NAS) | `563c139`, `f635050`, `e6606f4`, `716cad5`, `606c16d`, `195f7ee` |
 > | 8 — v0.2 enhancements (review queue, audit bundle, year stats, NAS deployment + backups UX) | ✅ Done | `ae533ef`, `70c5eb9`, `76f1763`, `cca0d65` |
 
 ### Phase 1 — Skeleton and data layer

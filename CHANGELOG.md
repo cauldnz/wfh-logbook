@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 7 — Telegram daily-review bot**, built against real captured
+  Bot API payloads (Real Data First). Pure conversation state machine +
+  strict adjustment grammar (unsigned/zero/over-24h/typographic-minus all
+  rejected with helpful replies) with ~100% coverage; raw-httpx adapter;
+  webhook ingress with dual-secret verification and evidence-before-
+  processing persistence to the append-only `bot_messages` table; polling
+  mode for tunnel-free operation; allowlist authorisation with a durable
+  one-rejection-then-silence rule. Adjust/confirm/lock run through the
+  same internal code paths as the web UI with `created_by='telegram'`.
+  Full review cycle (/yesterday → Adjust → "-45 lunch" → Lock) covered by
+  an end-to-end test.
+
+### Fixed
+
+- Hermetic-tests hole: env vars deleted by the test harness fell back to
+  the developer's real `.env`, so app lifespans inside tests could start
+  a real Telegram polling loop / probe the real controller. Credential
+  vars are now pinned to empty strings in tests.
+
 - **Review queue** (`/review-queue`, `GET /api/review-queue`): days needing
   attention — unlocked backlog (no statute of limitations), anomalous days,
   detected in-session data gaps (poller outage / host sleep, distinguished
