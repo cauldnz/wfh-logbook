@@ -58,5 +58,14 @@ export-xlsx: ## Export FY=<label> XLSX to OUT=<path>. Example: make export-xlsx 
 	@if [ -z "$(FY)" ] || [ -z "$(OUT)" ]; then echo 'Usage: make export-xlsx FY=2025-26 OUT=/tmp/wfh.xlsx'; exit 1; fi
 	$(PY) -m app.exporters --fy "$(FY)" --out "$(OUT)"
 
+nas-status: ## Health + container status of the NAS deployment (ssh alias 'unraid').
+	@echo "--- container ---"
+	@ssh unraid "docker ps --filter name=wfh-logbook --format '{{.Status}}'; docker inspect wfh-logbook --format 'health={{.State.Health.Status}} restarts={{.RestartCount}}'"
+	@echo "--- app health ---"
+	@curl -s -m 8 http://wtrmax.local:8088/api/health
+	@echo ""
+	@echo "--- recent poller ---"
+	@ssh unraid "docker logs wfh-logbook 2>&1 | grep -E 'poller: (ok|cycle failed|authentication)' | tail -3"
+
 clean: ## Remove caches and build artefacts.
 	@rm -rf .pytest_cache .mypy_cache .ruff_cache build dist *.egg-info

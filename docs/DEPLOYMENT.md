@@ -53,6 +53,19 @@ it writes only under `/data` and assumes nothing about `$HOME`.
 
    Sessionisation knobs (`GAP_BRIDGE_MINUTES` etc.) only matter on the very
    first start; after that the database is the source of truth.
+
+   > **`--env-file` gotchas (learned the hard way during a real migration):**
+   > Docker's `--env-file` is far dumber than the python-dotenv parser used
+   > in local development. It does **not** strip inline `# comments`, does
+   > **not** strip quotes around values, and does **not** trim whitespace
+   > after the `=`. A `.env` that works perfectly with `uvicorn` on a dev
+   > box can crash the container (`ValidationError`) or — worse — silently
+   > send a space-prefixed password to your controller (HTTP 403). Before
+   > using a `.env` with Docker: one `KEY=value` per line, no inline
+   > comments, no quotes, no stray spaces. Cleaning sed:
+   > `sed -E 's/[[:space:]]+#.*$//; s/[[:space:]]+$//; s/^([A-Za-z_]+)=[[:space:]]+/\1=/'`
+   > Also note: env values are baked in at `docker run` — editing the file
+   > requires `docker rm -f` + re-`run`, not just `restart`.
 6. **Extra Parameters**: `--user 99:100` (unRAID's `nobody:users`) so files
    in appdata get the ownership unRAID expects.
 7. Apply. Browse to `http://<nas>:8088` — the review page should load and
