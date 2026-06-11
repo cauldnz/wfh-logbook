@@ -127,6 +127,14 @@ class ApplyLock:
     message_id: int | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class ApplyRebuild:
+    """Force a sessioniser run for a date (HANDOFF 9.C) — same internal
+    path as the web UI's resessionise. Reply carries the resulting view."""
+
+    target_date: date
+
+
 OutgoingAction = (
     SendMessage
     | EditMessage
@@ -136,6 +144,7 @@ OutgoingAction = (
     | ApplyAdjustment
     | ApplyConfirm
     | ApplyLock
+    | ApplyRebuild
 )
 
 

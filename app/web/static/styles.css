@@ -191,6 +191,15 @@ button:hover:not(:disabled) { filter: brightness(1.1); }
 .calendar .day.locked { background: var(--locked-bg); color: var(--locked); border-color: var(--locked); }
 .calendar .day.anomalous { background: var(--error-bg); color: var(--error); border-color: var(--error); }
 .calendar .day.no-day { background: transparent; border: none; }
+.calendar .dow-header {
+  text-align: right;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 
 .muted { color: var(--fg-muted); }
 .row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }

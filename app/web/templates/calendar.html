@@ -11,6 +11,10 @@
       <span class="badge muted">muted</span> no data
     </p>
     <div class="calendar">
+      {# Weekday headers — Monday-first, matching the column alignment. #}
+      {% for dow in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}
+        <div class="dow-header">{{ dow }}</div>
+      {% endfor %}
       {# Pad leading cells so dates line up to Monday-first columns. #}
       {% for _ in range(leading_pad) %}<div class="day no-day"></div>{% endfor %}
       {% for d in days %}

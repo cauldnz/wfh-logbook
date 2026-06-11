@@ -465,6 +465,46 @@ Once an adjustment is successfully parsed while `awaiting='adjustment'`, the bot
 - Year view renders projections for a partially-elapsed FY without dollar figures.
 - The image passes `podman build` + smoke run under `--user 99:100`; backup-now produces a snapshot listed and downloadable via the UI; the restore procedure is exercised by an automated test against a temp DB.
 
+### Phase 9 — usability backlog (maintainer-reported, 2026-06-12)
+
+*(Reported from live daily use. None changes hour derivation.)*
+
+**9.A Every pre-locked day fully editable in the web UI**
+
+- A day with **no summary yet** (sessioniser hasn't run, or zero observations)
+  currently renders a dead "No data" card with no controls. It must offer a
+  **Build day** action (the existing resessionise path) which creates the v1
+  summary — computed 0:00 for an empty day — after which the normal adjust /
+  lock controls appear. This also unblocks the METHODOLOGY §4.6 outage case
+  (a positive adjustment on a day with no observations at all).
+- Unlocked days keep the existing adjust + lock + re-sessionise controls on
+  both the review page and `/day/{date}`.
+- Out of scope (unchanged §9 rejections): editing `sessions` rows or raw
+  observations directly. Edits happen at the summary level, versioned.
+
+**9.B Calendar weekday headers**
+
+- The 90-day calendar grid gains a Mon–Sun header row matching its
+  Monday-first column alignment.
+
+**9.C Force-sessionise command on the bot (and UI parity)**
+
+- New bot command `/rebuild [YYYY-MM-DD|today|yesterday]` (default:
+  yesterday): runs the same resessionise path as the web UI for that date and
+  replies with the resulting day view + buttons. Spec table in 7.F is
+  extended accordingly; same internal code path (7.G holds).
+- The UI side of this is 9.A's Build-day button.
+
+**Acceptance**
+
+- A day with no summary shows Build day; clicking it produces a v1 summary
+  (0:00 for an empty day) and the adjust form; an adjustment can then be
+  applied and the day locked — all from the UI.
+- Calendar renders Mon–Sun headers aligned with the grid.
+- `/rebuild 2026-06-10` from an authorised chat rebuilds and replies with the
+  day view; `/rebuild` defaults to yesterday; malformed dates get a usage
+  hint.
+
 ## 7. Testing standards
 
 - **Coverage target**: 85% lines for `app/sessions/`, `app/api/`, `app/exporters/`, and `app/notifier/`. The sessionisation module and the notifier conversation/grammar modules are the audit-defence cores; coverage there should be effectively 100% of branches.

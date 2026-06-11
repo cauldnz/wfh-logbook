@@ -31,6 +31,7 @@ from app.notifier.base import (
     ApplyAdjustment,
     ApplyConfirm,
     ApplyLock,
+    ApplyRebuild,
     Button,
     ClearAwaiting,
     DayView,
@@ -54,6 +55,7 @@ HELP_TEXT = (
     "/week — last 7 days\n"
     "/year — financial-year total\n"
     "/status — poller / sessioniser / backup health\n"
+    "/rebuild [YYYY-MM-DD|today|yesterday] — force a sessioniser run\n"
     "\n"
     "Adjustments (after tapping ✏ Adjust): send a signed duration and a "
     "reason, e.g.\n"
@@ -182,6 +184,25 @@ def _handle_command(event: IncomingEvent, reader: DbReader) -> list[OutgoingActi
                 )
             )
         )
+        return actions
+
+    if cmd == "/rebuild":
+        arg = event.args.strip().lower()
+        if not arg or arg == "yesterday":
+            target = reader.today() - timedelta(days=1)
+        elif arg == "today":
+            target = reader.today()
+        else:
+            try:
+                target = date.fromisoformat(arg)
+            except ValueError:
+                actions.append(
+                    SendMessage(
+                        text="Usage: /rebuild [YYYY-MM-DD|today|yesterday] (defaults to yesterday)"
+                    )
+                )
+                return actions
+        actions.append(ApplyRebuild(target_date=target))
         return actions
 
     if cmd == "/status":

@@ -35,6 +35,7 @@ from app.notifier.base import (
     ApplyAdjustment,
     ApplyConfirm,
     ApplyLock,
+    ApplyRebuild,
     Button,
     ClearAwaiting,
     DayView,
@@ -457,6 +458,28 @@ def _execute(
         else:
             _send(db, notifier, chat_id, text)
         logger.info("telegram: day locked date=%s", action.target_date.isoformat())
+
+    elif isinstance(action, ApplyRebuild):
+        from app.notifier.conversation import day_buttons
+        from app.sessions.persistence import sessionise_date
+        from app.sessions.rules import RuleSet
+
+        rules = RuleSet.from_db(db)
+        result = sessionise_date(db, action.target_date, rules)
+        view = reader.day_view(action.target_date)
+        if view is None:  # pragma: no cover - sessionise always creates v1
+            _send(db, notifier, chat_id, "Rebuild ran but produced no summary.")
+            return
+        is_today = action.target_date == reader.today()
+        text = render_day_text(view, today=is_today)
+        text += f"\n(rebuilt: {result.sessions_built} session(s), v{result.daily_summary_version})"
+        _send(db, notifier, chat_id, text, day_buttons(view, today=is_today))
+        logger.info(
+            "telegram: rebuild date=%s sessions=%d version=%d",
+            action.target_date.isoformat(),
+            result.sessions_built,
+            result.daily_summary_version,
+        )
 
     else:  # pragma: no cover - defensive
         logger.error("telegram: unknown action type %s", type(action).__name__)

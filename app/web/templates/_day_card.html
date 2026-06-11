@@ -94,6 +94,21 @@
       </label>
       <button type="submit">Adjust (creates v{{ day.latest.version + 1 }})</button>
     </form>
+  {% else %}
+    {# No summary yet (HANDOFF 9.A): offer to build the day. Creates the v1
+       summary — 0:00 for an empty day — after which the adjust/lock
+       controls above render. Unblocks METHODOLOGY §4.6 outage adjustments. #}
+    <p class="muted">
+      The sessioniser hasn't built this day yet. Build it to review — an
+      empty day starts at 0:00 and can then be adjusted with a reason
+      (e.g. a documented poller outage).
+    </p>
+    <form class="adjust"
+          hx-post="/web/days/{{ day.local_date }}/resessionise"
+          hx-target="#day-{{ day.local_date }}"
+          hx-swap="outerHTML">
+      <button type="submit">Build day</button>
+    </form>
   {% endif %}
 
   {% if day.versions and day.versions|length > 1 %}
