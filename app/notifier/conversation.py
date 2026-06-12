@@ -144,7 +144,10 @@ def _handle_command(event: IncomingEvent, reader: DbReader) -> list[OutgoingActi
         return actions
 
     if cmd == "/today":
-        actions.append(_show_day(reader, reader.today(), today=True))
+        # Today is in flux: always rebuild before rendering so the reply is
+        # current-to-the-minute, not as-of-last-night (HANDOFF 9.C amendment).
+        # Idempotent; announce=False keeps the rebuild out of the reply text.
+        actions.append(ApplyRebuild(target_date=reader.today(), announce=False))
         return actions
 
     if cmd == "/yesterday":

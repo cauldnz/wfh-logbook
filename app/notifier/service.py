@@ -472,7 +472,10 @@ def _execute(
             return
         is_today = action.target_date == reader.today()
         text = render_day_text(view, today=is_today)
-        text += f"\n(rebuilt: {result.sessions_built} session(s), v{result.daily_summary_version})"
+        if action.announce:
+            text += (
+                f"\n(rebuilt: {result.sessions_built} session(s), v{result.daily_summary_version})"
+            )
         _send(db, notifier, chat_id, text, day_buttons(view, today=is_today))
         logger.info(
             "telegram: rebuild date=%s sessions=%d version=%d",

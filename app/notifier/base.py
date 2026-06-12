@@ -130,9 +130,14 @@ class ApplyLock:
 @dataclass(frozen=True, slots=True)
 class ApplyRebuild:
     """Force a sessioniser run for a date (HANDOFF 9.C) — same internal
-    path as the web UI's resessionise. Reply carries the resulting view."""
+    path as the web UI's resessionise. Reply carries the resulting view.
+
+    ``announce=False`` suppresses the "(rebuilt: ...)" suffix — used by
+    /today, where the rebuild is an implementation detail, not the ask.
+    """
 
     target_date: date
+    announce: bool = True
 
 
 OutgoingAction = (

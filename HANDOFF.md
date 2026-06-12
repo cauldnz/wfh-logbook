@@ -494,6 +494,12 @@ Once an adjustment is successfully parsed while `awaiting='adjustment'`, the bot
   replies with the resulting day view + buttons. Spec table in 7.F is
   extended accordingly; same internal code path (7.G holds).
 - The UI side of this is 9.A's Build-day button.
+- *(Amended 2026-06-12, maintainer request)*: `/today` ALWAYS rebuilds the
+  current date before rendering — today is in flux and the as-of-last-night
+  view violates least surprise. The rebuild is idempotent (no new summary
+  version unless computed seconds changed) and silent (no "rebuilt" suffix
+  in the reply). `/yesterday` is unchanged: it renders the stored state,
+  since yesterday is normally final after the nightly run.
 
 **Acceptance**
 

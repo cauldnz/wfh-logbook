@@ -145,6 +145,29 @@ class TestRebuildEndToEnd:
         labels = [b.text for r in sent.buttons for b in r]
         assert "✏ Adjust" in labels
 
+    def test_today_command_rebuilds_and_replies_without_announce(self, db_session: Session) -> None:
+        """HANDOFF 9.C amendment: /today = silent rebuild + today-style view."""
+        from app.config import get_settings
+        from app.main import seed_config_if_missing
+        from app.notifier.service import process_update
+
+        seed_config_if_missing(db_session, get_settings())
+        db_session.commit()
+
+        notifier = FakeNotifier()
+        process_update(db_session, msg_update("/today", command=True), notifier, bot_settings())
+        sent = notifier.sent[-1]
+        assert "Today so far" in sent.text
+        assert "rebuilt" not in sent.text  # silent rebuild
+        labels = [b.text for r in sent.buttons for b in r]
+        assert labels == ["✏ Adjust"]  # today never offers Lock
+        # The rebuild really ran: today's v1 summary now exists.
+
+        today_str = db_session.execute(
+            select(DailySummary.local_date).order_by(DailySummary.id.desc()).limit(1)
+        ).scalar_one()
+        assert today_str is not None
+
     def test_rebuild_is_idempotent_via_same_path_as_web(self, db_session: Session) -> None:
         from app.config import get_settings
         from app.main import seed_config_if_missing

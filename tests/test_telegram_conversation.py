@@ -205,13 +205,17 @@ class TestCommands:
         labels = [b.text for row in send.buttons for b in row]
         assert labels == ["✏ Adjust"]
 
-    def test_today_has_adjust_but_never_lock(self) -> None:
-        reader = StubReader({TODAY: day_view(TODAY)})
-        actions = dispatch(command("/today"), reader=reader)
-        send = next(a for a in actions if isinstance(a, SendMessage))
-        assert "Today so far" in send.text
-        labels = [b.text for row in send.buttons for b in row]
-        assert labels == ["✏ Adjust"]
+    def test_today_always_rebuilds_silently(self) -> None:
+        """HANDOFF 9.C amendment: /today rebuilds before rendering, without
+        announcing the rebuild. The service layer renders the result with
+        today-style buttons (Adjust only, never Lock) — covered in the
+        service end-to-end tests."""
+        from app.notifier.base import ApplyRebuild
+
+        actions = dispatch(command("/today"))
+        assert ApplyRebuild(target_date=TODAY, announce=False) in actions
+        # No direct SendMessage: the reply comes from the rebuild execution.
+        assert not any(isinstance(a, SendMessage) for a in actions)
 
     def test_day_with_bad_date_gets_usage_hint(self) -> None:
         actions = dispatch(command("/day", args="not-a-date"))
