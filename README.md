@@ -6,12 +6,18 @@ The system uses a dedicated Wi-Fi SSID on a Ubiquiti home network as an explicit
 
 ## Status
 
-Phases 1, 3, 4, 5, 6 implemented per [HANDOFF.md](HANDOFF.md). Phases 2
-(UniFi poller) and 7 (Telegram bot) are pending real-data capture from
-the user's controller and Telegram updates per the project's
-"Real Data First" rule (see [CLAUDE.md](CLAUDE.md)). The web UI, API,
-sessionisation, XLSX/CSV export, and nightly backup are all working;
-observations land in the database manually until Phase 2 wires the poller.
+All nine delivery phases in [HANDOFF.md](HANDOFF.md) are implemented and the
+service is running in production on a home NAS: UniFi poller, deterministic
+sessionisation, web review UI, Telegram review bot (polling mode), XLSX/CSV
+and audit-bundle exports, review queue, year statistics, and nightly local +
+off-box backups. Verified against a real UDM-line controller and real
+Telegram payloads (per the project's "Real Data First" rule in
+[CLAUDE.md](CLAUDE.md)). 247 tests pass; `ruff` and `mypy --strict` are clean.
+
+Two things remain optional/future: webhook mode for the bot (built and
+tested; awaits a Cloudflare Tunnel) and a classic-controller adapter (awaits
+a real classic-controller fixture). Day-to-day running and machine handover
+are documented in [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
 ## Why this exists
 
