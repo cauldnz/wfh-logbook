@@ -254,3 +254,39 @@ def lock_day(db: Session, target_date: date) -> DailySummary:
         latest.locked_at = _utcnow()
         db.flush()
     return latest
+
+
+@dataclass(frozen=True, slots=True)
+class BulkLockResult:
+    """Outcome of :func:`lock_clean_days`."""
+
+    locked_dates: list[date]
+    skipped_count: int
+
+
+def lock_clean_days(db: Session, today_local: date) -> BulkLockResult:
+    """Lock every unlocked past day the review queue considers CLEAN.
+
+    Clean == the day's only review-queue reason is ``unlocked_backlog`` and it
+    has > 0 claimed seconds. Anomalous / data-gap / heavy-bridging /
+    long-session / suspect-zero days and 0-hour days are deliberately left for
+    manual review (HANDOFF §6 Phase 10.B). Reuses the review-queue predicate so
+    "clean" has exactly one definition across the app.
+    """
+    # Local import avoids a module-load cycle (review_queue is a heavier
+    # module that itself imports models/db).
+    from app.api.review_queue import build_review_queue
+
+    queue = build_review_queue(db, today_local)
+    locked: list[date] = []
+    skipped = 0
+    for item in queue.items:
+        if item.locked:
+            continue
+        if item.reasons == ["unlocked_backlog"] and (item.claimed_seconds or 0) > 0:
+            lock_day(db, item.local_date)
+            locked.append(item.local_date)
+        else:
+            skipped += 1
+    db.flush()
+    return BulkLockResult(locked_dates=locked, skipped_count=skipped)

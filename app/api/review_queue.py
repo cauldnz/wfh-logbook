@@ -14,6 +14,14 @@ Categories:
   holes are expected and handled by gap-bridging).
 - ``heavy_bridging``: bridged time > 15% of a session, or ≥ 4 bridges in
   one session — worth a glance even though bridging is methodology-sanctioned.
+- ``long_session``: a single session longer than ``LONG_SESSION_HOURS`` —
+  implausible as real work, and the usual signature of a device left
+  connected to the work SSID overnight. Its hours land on the session's
+  START date (METHODOLOGY §4.4), inflating that day.
+- ``suspect_zero``: a 0-hour day sitting in the shadow of an earlier session
+  that spilled across midnight, so hours the user likely worked were
+  attributed to the earlier date. Flagged so bulk-lock never locks it at
+  zero and so the pair surfaces together for correction.
 """
 
 from __future__ import annotations
@@ -40,6 +48,12 @@ SCAN_WINDOW_DAYS = 90
 # Heavy-bridging thresholds (HANDOFF Phase 8.A).
 HEAVY_BRIDGE_FRACTION = 0.15
 HEAVY_BRIDGE_COUNT = 4
+# A single continuous session longer than this is implausible as real work and
+# is the usual signature of a forgotten end-of-day disconnect (HANDOFF Phase
+# 10.C). Its hours attribute to the start date, zeroing the day(s) it spills
+# into.
+LONG_SESSION_HOURS = 16
+LONG_SESSION_THRESHOLD_SECONDS = LONG_SESSION_HOURS * 3600
 
 
 class GapWindow(BaseModel):
@@ -123,11 +137,48 @@ def find_observation_gaps(
     return gaps
 
 
+def _spill_covered_dates(
+    db: Session,
+    window_start: date,
+    yesterday: date,
+    tz_name: str,
+) -> set[str]:
+    """Local dates whose wall-clock is covered by a session that STARTED earlier.
+
+    Midnight-crossing attribution puts a whole session's hours on its start
+    date (METHODOLOGY §4.4). A session that runs past midnight therefore
+    "covers" the following local date(s) while contributing zero hours to them,
+    so a day in that shadow can read 0h despite presence. Drives ``suspect_zero``.
+    """
+    tz = ZoneInfo(tz_name)
+    sessions = list(
+        db.execute(
+            select(WorkSession)
+            .where(WorkSession.local_date >= window_start.isoformat())
+            .where(WorkSession.local_date <= yesterday.isoformat())
+        ).scalars()
+    )
+    covered: set[str] = set()
+    for s in sessions:
+        start = _ensure_utc(s.started_at)
+        end = _ensure_utc(s.ended_at)
+        if start is None or end is None:
+            continue
+        start_date = start.astimezone(tz).date()
+        end_date = end.astimezone(tz).date()
+        d = start_date + timedelta(days=1)
+        while d <= end_date:
+            covered.add(d.isoformat())
+            d = d + timedelta(days=1)
+    return covered
+
+
 def build_review_queue(db: Session, today_local: date) -> ReviewQueueResponse:
     cfg = db.execute(select(Config).limit(1)).scalar_one()
     cap_seconds = cfg.daily_cap_hours * 3600
     yesterday = today_local - timedelta(days=1)
     window_start = today_local - timedelta(days=SCAN_WINDOW_DAYS)
+    spill_covered = _spill_covered_dates(db, window_start, yesterday, cfg.local_timezone)
 
     # Latest version per date in the scan window (older unlocked dates are
     # included too — backlog has no statute of limitations).
@@ -173,6 +224,13 @@ def build_review_queue(db: Session, today_local: date) -> ReviewQueueResponse:
             ) or any(s.bridged_gaps_count >= HEAVY_BRIDGE_COUNT for s in sessions)
             if heavy:
                 reasons.append("heavy_bridging")
+            if (
+                max((s.duration_seconds for s in sessions), default=0)
+                > LONG_SESSION_THRESHOLD_SECONDS
+            ):
+                reasons.append("long_session")
+            if session_seconds == 0 and date_str in spill_covered:
+                reasons.append("suspect_zero")
 
         if reasons:
             items.append(

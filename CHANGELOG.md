@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 10 — lock-backlog reduction** (in progress): a review-queue
+  `long_session` flag (one session > 16h — the signature of a forgotten
+  end-of-day disconnect) paired with `suspect_zero` (the 0-hour day in the
+  shadow of a midnight-spanning session), and one-tap bulk lock of clean days
+  (`POST /api/days/lock-clean`) that locks only unlocked > 0h days whose sole
+  review reason is `unlocked_backlog`. Pure classification + lock workflow — no
+  change to hour derivation (`METHODOLOGY.md` / `rule_version` untouched).
+  Remaining on the branch: morning Telegram lock reminders, a `/lockall` bot
+  command, a web backlog banner, and an export guard.
+
 - **Phase 7 — Telegram daily-review bot**, built against real captured
   Bot API payloads (Real Data First). Pure conversation state machine +
   strict adjustment grammar (unsigned/zero/over-24h/typographic-minus all

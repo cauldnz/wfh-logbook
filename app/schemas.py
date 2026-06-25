@@ -133,3 +133,16 @@ class ResessioniseResponse(BaseModel):
     daily_summary_version: int
     daily_summary_changed: bool
     latest: DailySummaryOut
+
+
+class BulkLockResponse(BaseModel):
+    """Returned by ``POST /api/days/lock-clean`` (HANDOFF §6 Phase 10.B)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    locked_dates: list[DateType]
+    locked_count: int
+    skipped_count: int = Field(
+        ...,
+        description="unlocked days left for manual review (anomalies, flags, or 0h)",
+    )
