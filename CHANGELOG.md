@@ -19,8 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Adds a daily morning Telegram **lock reminder** (10.A) that nudges about
   unlocked days (escalating with the oldest age, pointing clean days at
   `/lockall`), configurable via `LOCK_REMINDER_HOUR` /
-  `LOCK_REMINDER_THRESHOLD_DAYS`. Remaining on the branch: a `/lockall` bot
-  command, a web backlog banner, and an export guard.
+  `LOCK_REMINDER_THRESHOLD_DAYS`, plus the `/lockall` bot command for the bulk
+  lock. Remaining on the branch: a web backlog banner and an export guard.
 
 - **Phase 7 — Telegram daily-review bot**, built against real captured
   Bot API payloads (Real Data First). Pure conversation state machine +

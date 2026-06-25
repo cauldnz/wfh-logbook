@@ -29,6 +29,7 @@ from datetime import date, timedelta
 from app.notifier.base import (
     AnswerCallback,
     ApplyAdjustment,
+    ApplyBulkLock,
     ApplyConfirm,
     ApplyLock,
     ApplyRebuild,
@@ -56,6 +57,7 @@ HELP_TEXT = (
     "/year — financial-year total\n"
     "/status — poller / sessioniser / backup health\n"
     "/rebuild [YYYY-MM-DD|today|yesterday] — force a sessioniser run\n"
+    "/lockall — lock all clean (un-flagged) backlog days\n"
     "\n"
     "Adjustments (after tapping ✏ Adjust): send a signed duration and a "
     "reason, e.g.\n"
@@ -222,6 +224,10 @@ def _handle_command(event: IncomingEvent, reader: DbReader) -> list[OutgoingActi
                 )
             )
         )
+        return actions
+
+    if cmd == "/lockall":
+        actions.append(ApplyBulkLock())
         return actions
 
     actions.append(SendMessage(text=f"Unknown command {cmd}. /help lists what I understand."))
