@@ -32,18 +32,18 @@
 
   {% if day.sessions %}
     <h3 style="margin-top:1rem;">Sessions</h3>
-    <table>
+    <table class="stack">
       <thead>
         <tr><th>Start</th><th>End</th><th>Duration</th><th>Devices</th><th>Bridged</th></tr>
       </thead>
       <tbody>
       {% for s in day.sessions %}
         <tr>
-          <td>{{ s.started_at.astimezone(tz).strftime('%H:%M:%S') }}</td>
-          <td>{{ s.ended_at.astimezone(tz).strftime('%H:%M:%S') }}</td>
-          <td>{{ "%.2f"|format(s.duration_seconds / 3600) }} h</td>
-          <td>{{ s.devices_seen|join(', ') }}</td>
-          <td>{% if s.bridged_gaps_count %}{{ s.bridged_gaps_count }} ({{ s.bridged_gaps_seconds // 60 }} min){% else %}&mdash;{% endif %}</td>
+          <td data-label="Start">{{ s.started_at.astimezone(tz).strftime('%H:%M:%S') }}</td>
+          <td data-label="End">{{ s.ended_at.astimezone(tz).strftime('%H:%M:%S') }}</td>
+          <td data-label="Duration">{{ "%.2f"|format(s.duration_seconds / 3600) }} h</td>
+          <td data-label="Devices">{{ s.devices_seen|join(', ') }}</td>
+          <td data-label="Bridged">{% if s.bridged_gaps_count %}{{ s.bridged_gaps_count }} ({{ s.bridged_gaps_seconds // 60 }} min){% else %}&mdash;{% endif %}</td>
         </tr>
       {% endfor %}
       </tbody>
@@ -114,21 +114,21 @@
   {% if day.versions and day.versions|length > 1 %}
     <details style="margin-top:0.75rem;">
       <summary class="muted">History ({{ day.versions|length }} versions)</summary>
-      <table>
+      <table class="stack">
         <thead>
           <tr><th>v</th><th>Computed</th><th>Adj (min)</th><th>Reason</th><th>Claimed</th><th>By</th><th>At</th><th>Locked</th></tr>
         </thead>
         <tbody>
         {% for v in day.versions %}
           <tr>
-            <td>v{{ v.version }}</td>
-            <td>{{ "%.2f"|format(v.computed_seconds / 3600) }} h</td>
-            <td>{{ "%+.0f"|format(v.adjustment_seconds / 60) if v.adjustment_seconds else "" }}</td>
-            <td>{{ v.adjustment_reason or "" }}</td>
-            <td>{{ "%.2f"|format(v.claimed_seconds / 3600) }} h</td>
-            <td>{{ v.created_by }}</td>
-            <td>{{ v.created_at.astimezone(tz).strftime('%Y-%m-%d %H:%M') }}</td>
-            <td>{% if v.locked %}<span class="badge locked">locked</span>{% else %}&mdash;{% endif %}</td>
+            <td data-label="Version">v{{ v.version }}</td>
+            <td data-label="Computed">{{ "%.2f"|format(v.computed_seconds / 3600) }} h</td>
+            <td data-label="Adj (min)">{{ "%+.0f"|format(v.adjustment_seconds / 60) if v.adjustment_seconds else "" }}</td>
+            <td data-label="Reason">{{ v.adjustment_reason or "" }}</td>
+            <td data-label="Claimed">{{ "%.2f"|format(v.claimed_seconds / 3600) }} h</td>
+            <td data-label="By">{{ v.created_by }}</td>
+            <td data-label="At">{{ v.created_at.astimezone(tz).strftime('%Y-%m-%d %H:%M') }}</td>
+            <td data-label="Locked">{% if v.locked %}<span class="badge locked">locked</span>{% else %}&mdash;{% endif %}</td>
           </tr>
         {% endfor %}
         </tbody>

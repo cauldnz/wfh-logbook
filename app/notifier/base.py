@@ -44,7 +44,8 @@ class IncomingEvent:
 @dataclass(frozen=True, slots=True)
 class Button:
     text: str
-    callback_data: str
+    callback_data: str = ""
+    url: str | None = None  # a URL button (deep link) instead of a callback (11.A)
 
 
 @dataclass(frozen=True, slots=True)

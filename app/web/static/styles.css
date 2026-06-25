@@ -206,3 +206,74 @@ button:hover:not(:disabled) { filter: brightness(1.1); }
 .row > * { flex: 0 0 auto; }
 .spacer { flex: 1 1 auto; }
 code { background: var(--code-bg); padding: 0.05rem 0.3rem; border-radius: 0.2rem; }
+
+/* --------------------------------------------- mobile / iOS triage (Phase 11.B) */
+html { -webkit-text-size-adjust: 100%; }
+a, button, .button { -webkit-tap-highlight-color: rgba(127, 127, 127, 0.18); }
+
+@media (max-width: 640px) {
+  header.site {
+    padding: 0.6rem 0.8rem;
+    padding-left: max(0.8rem, env(safe-area-inset-left));
+    padding-right: max(0.8rem, env(safe-area-inset-right));
+    gap: 0.4rem 1rem;
+  }
+  header.site nav { width: 100%; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  header.site nav a {
+    margin: 0;
+    padding: 0.5rem 0.65rem;
+    border-radius: 0.35rem;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+  }
+  header.site nav a.active { background: var(--accent-bg); }
+
+  main {
+    padding: 0.75rem;
+    padding-left: max(0.75rem, env(safe-area-inset-left));
+    padding-right: max(0.75rem, env(safe-area-inset-right));
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+  .card { padding: 0.85rem; }
+  .hours { font-size: 1.6rem; }
+
+  /* touch-friendly controls (>= 44px tap targets) */
+  button, .button { min-height: 44px; padding: 0.7rem 1rem; font-size: 1rem; }
+
+  /* the adjust form stacks; inputs go full width */
+  form.adjust { flex-direction: column; align-items: stretch; gap: 0.6rem; }
+  form.adjust label { font-size: 0.9rem; }
+  form.adjust input[type=number],
+  form.adjust input[type=text] { width: 100%; min-width: 0; min-height: 44px; font-size: 1rem; }
+  form.adjust button, form.adjust .button { width: 100%; }
+
+  /* tables marked .stack reflow to label/value cards — one <tr> per card */
+  table.stack thead { display: none; }
+  table.stack, table.stack tbody { display: block; }
+  table.stack tr {
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.5rem 0.7rem;
+    margin-bottom: 0.6rem;
+  }
+  table.stack td {
+    display: block;
+    border: none;
+    padding: 0.2rem 0;
+    font-size: 0.95rem;
+  }
+  table.stack td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--fg-muted);
+    margin-right: 0.4rem;
+  }
+  table.stack td[data-label=""]::before { content: ""; }
+  table.stack td:empty { display: none; }
+  table.stack td.action { margin-top: 0.5rem; padding-top: 0.4rem; }
+  table.stack td.action .button { display: block; width: 100%; text-align: center; }
+
+  .calendar .day { min-height: 2.4rem; padding: 0.4rem 0.3rem; }
+}

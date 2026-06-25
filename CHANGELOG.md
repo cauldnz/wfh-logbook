@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 11 — mobile triage UI + deep-link nudge**: the morning lock reminder
+  now carries a tappable "Open review queue" button to `WEB_BASE_URL` (e.g.
+  `http://wtrmax.local:8088`), so one tap from Telegram opens the triage UI on
+  your phone. The web UI is now mobile/iOS-friendly — the review queue and the
+  day-detail tables reflow to stacked label/value cards on narrow screens, the
+  adjust form stacks with ≥ 44px touch targets, and the base template adds
+  `viewport-fit=cover` + safe-area insets and apple web-app meta. No SPA, no
+  change to hour derivation. The Notifier `Button` gained an optional `url`.
+
 - **Phase 10 — lock-backlog reduction**: tackles the unlocked-day backlog that
   builds up when anomalous days need correction. None of it changes how hours
   are derived (`METHODOLOGY.md` / `rule_version` untouched).

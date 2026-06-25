@@ -98,8 +98,10 @@ class FakeNotifier:
         raise AssertionError("unused")
 
 
-def _settings_with_allowed(allowed: str) -> Settings:
-    return get_settings().model_copy(update={"telegram_allowed_user_ids": allowed})
+def _settings_with_allowed(allowed: str, web_base_url: str = "") -> Settings:
+    return get_settings().model_copy(
+        update={"telegram_allowed_user_ids": allowed, "web_base_url": web_base_url}
+    )
 
 
 def _seed_unlocked_day(db: Session, local_date: str, hours: float) -> None:
@@ -141,6 +143,16 @@ class TestRunLockReminder:
                 .all()
             )
         assert len(out) == 2
+
+    def test_reminder_carries_review_queue_button(self, db_session: Session) -> None:
+        seed_config_if_missing(db_session, get_settings())
+        _seed_unlocked_day(db_session, "2026-06-20", 5)
+        db_session.commit()
+        notifier = FakeNotifier()
+        settings = _settings_with_allowed("111", web_base_url="http://wtrmax.local:8088")
+        with time_machine.travel(datetime(2026, 6, 25, 2, 0, tzinfo=UTC), tick=False):
+            run_lock_reminder(notifier, settings, get_sessionmaker(), "Australia/Sydney")
+        assert notifier.sent[0].buttons[0][0].url == "http://wtrmax.local:8088/review-queue"
 
     def test_no_allowed_users_sends_nothing(self, db_session: Session) -> None:
         seed_config_if_missing(db_session, get_settings())

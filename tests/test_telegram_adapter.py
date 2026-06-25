@@ -25,6 +25,27 @@ def updates() -> list[dict]:  # type: ignore[type-arg]
     return json.loads(FIXTURE.read_text(encoding="utf-8"))["result"]
 
 
+class TestInlineKeyboard:
+    """A Button with a url renders as a Telegram URL button (Phase 11.A)."""
+
+    def test_url_button_renders_as_url(self) -> None:
+        from app.notifier.telegram import _buttons_to_inline_keyboard
+
+        kb = _buttons_to_inline_keyboard(
+            ((Button(text="Open", url="http://wtrmax.local:8088/review-queue"),),)
+        )
+        assert kb["inline_keyboard"][0][0] == {
+            "text": "Open",
+            "url": "http://wtrmax.local:8088/review-queue",
+        }
+
+    def test_callback_button_unchanged(self) -> None:
+        from app.notifier.telegram import _buttons_to_inline_keyboard
+
+        kb = _buttons_to_inline_keyboard(((Button(text="Lock", callback_data="lock:2026-06-20"),),))
+        assert kb["inline_keyboard"][0][0] == {"text": "Lock", "callback_data": "lock:2026-06-20"}
+
+
 # ----------------------------------------------------------- inbound parsing
 
 

@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     # LAN service binds 0.0.0.0 by design (single-host Docker container).
     http_host: str = "0.0.0.0"
     http_port: int = 8088
+    # LAN (or later public) URL of the web UI, used for bot deep links (11.A).
+    web_base_url: str = ""
     poll_interval_seconds: int = 60
     data_dir: Path = Field(default=Path("/data"))
     log_level: str = "INFO"

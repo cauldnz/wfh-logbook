@@ -11,15 +11,15 @@
         <button type="submit" class="button">🔒 Lock all clean days</button>
         <span class="muted">Locks unlocked days with no flags and &gt; 0 h; leaves anomalies/flagged/0 h days for review.</span>
       </form>
-      <table>
+      <table class="stack">
         <thead>
           <tr><th>Date</th><th>Flags</th><th>Claimed</th><th>Detail</th><th></th></tr>
         </thead>
         <tbody>
         {% for item in queue.items %}
           <tr>
-            <td>{{ item.local_date }} <span class="muted">({{ item.local_date.strftime('%a') }})</span></td>
-            <td>
+            <td data-label="Date">{{ item.local_date }} <span class="muted">({{ item.local_date.strftime('%a') }})</span></td>
+            <td data-label="Flags">
               {% for reason in item.reasons %}
                 {% if reason == 'unlocked_backlog' %}<span class="badge warn">unlocked</span>
                 {% elif reason == 'anomalous' %}<span class="badge error">anomalous</span>
@@ -30,8 +30,8 @@
                 {% endif %}
               {% endfor %}
             </td>
-            <td>{% if item.claimed_seconds is not none %}{{ "%.2f"|format(item.claimed_seconds / 3600) }} h (v{{ item.version }}){% endif %}</td>
-            <td class="muted">
+            <td data-label="Claimed">{% if item.claimed_seconds is not none %}{{ "%.2f"|format(item.claimed_seconds / 3600) }} h (v{{ item.version }}){% endif %}</td>
+            <td class="muted" data-label="Detail">
               {% if item.gaps %}
                 {% for g in item.gaps %}
                   gap {{ g.start.astimezone(tz).strftime('%H:%M') }}&ndash;{{ g.end.astimezone(tz).strftime('%H:%M') }} ({{ g.seconds // 60 }} min){% if not loop.last %}; {% endif %}
@@ -40,7 +40,7 @@
                 {{ item.bridged_gaps_count }} bridges, {{ item.bridged_gaps_seconds // 60 }} min bridged
               {% endif %}
             </td>
-            <td><a class="button muted" href="/day/{{ item.local_date }}">Review</a></td>
+            <td class="action" data-label=""><a class="button muted" href="/day/{{ item.local_date }}">Review</a></td>
           </tr>
         {% endfor %}
         </tbody>

@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.api.review_queue import ReviewQueueResponse, build_review_queue
 from app.config import Settings
 from app.db import get_sessionmaker
-from app.notifier.base import Notifier, OutgoingMessage
+from app.notifier.base import Button, Notifier, OutgoingMessage
 from app.notifier.service import record_outbound
 
 logger = logging.getLogger(__name__)
@@ -102,10 +102,14 @@ def run_lock_reminder(
         if text is None:
             logger.info("reminder: no unlocked backlog; nothing sent")
             return 0
+        buttons: tuple[tuple[Button, ...], ...] = ()
+        if settings.web_base_url:
+            url = settings.web_base_url.rstrip("/") + "/review-queue"
+            buttons = ((Button(text="📂 Open review queue", url=url),),)
         sent = 0
         for chat_id in allowed:
             try:
-                result = notifier.send(OutgoingMessage(chat_id=chat_id, text=text))
+                result = notifier.send(OutgoingMessage(chat_id=chat_id, text=text, buttons=buttons))
             except Exception:
                 logger.exception("reminder: send failed for chat %s", chat_id)
                 continue

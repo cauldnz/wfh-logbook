@@ -185,7 +185,8 @@ Deliver in the order below. Each phase ends with all its acceptance criteria gre
 > | 7 — Telegram daily-review bot | ✅ Done (polling mode live; webhook mode built + tested, pending Cloudflare Tunnel on the NAS) | `563c139`, `f635050`, `e6606f4`, `716cad5`, `606c16d`, `195f7ee` |
 > | 8 — v0.2 enhancements (review queue, audit bundle, year stats, NAS deployment + backups UX) | ✅ Done | `ae533ef`, `70c5eb9`, `76f1763`, `cca0d65` |
 > | 9 — usability backlog (editable pre-locked days, calendar headers, /rebuild) | ✅ Done | `70977d2`, `b512167` |
-> | 10 — lock-backlog reduction (reminders, bulk-lock, forgotten-disconnect flag, web banner, export guard) | ✅ Done (PR open) | `feat/phase-10-lock-backlog` |
+> | 10 — lock-backlog reduction (reminders, bulk-lock, forgotten-disconnect flag, web banner, export guard) | ✅ Done | `f590017`, `67e55ae`, `1cf47d1`, `2fa438a` |
+> | 11 — mobile triage UI + deep-link nudge | 🚧 In progress (`feat/phase-11-mobile-ui`) | — |
 
 ### Phase 1 — Skeleton and data layer
 
@@ -588,6 +589,48 @@ logged for separate maintainer decision).
 - The web banner shows the unlocked count and hides at zero; exporting a FY with
   unlocked days requires confirmation, and the confirmed path still produces the
   file.
+
+### Phase 11 — Mobile triage UI + deep-link nudge (maintainer-reported, 2026-06-26)
+
+*(Reported from live use: the morning reminder should let the maintainer jump
+straight from Telegram to a phone-friendly UI and resolve the backlog there.
+None of this changes how hours are derived. The stack stays server-rendered
+Jinja + HTMX — no SPA, per §3.)*
+
+**11.A Deep-link nudge**
+
+- New config `WEB_BASE_URL` (e.g. `http://wtrmax.local:8088`) — the LAN URL of
+  the web UI. The morning lock reminder (10.A) gains a tappable inline URL
+  button "Open review queue" → `{WEB_BASE_URL}/review-queue` when it is set;
+  text-only (no button) when it is not. The Notifier `Button` gains an optional
+  `url` so a URL button is a first-class action, not a Telegram-specific hack.
+- Local network to start; the same `WEB_BASE_URL` can point at a Cloudflare
+  Tunnel hostname later for off-network access, no code change.
+
+**11.B Mobile / iOS triage UI**
+
+- Responsive CSS (the only new `@media` breakpoint besides dark mode):
+  - The review queue and the day-detail tables (sessions, version history)
+    reflow from columns to stacked label/value rows on narrow screens (≤ 640px)
+    via `data-label` attributes — the review queue becomes a tappable card list,
+    the primary triage surface.
+  - The adjust form stacks vertically with full-width inputs; all buttons and
+    inputs get ≥ 44px touch height on mobile.
+- iOS polish in the base template: `viewport-fit=cover` + `env(safe-area-inset-*)`
+  padding for the notch/home-bar, `apple-mobile-web-app-capable`,
+  `apple-mobile-web-app-status-bar-style`, `theme-color` (light + dark),
+  `color-scheme`. Inputs are already 16px (no iOS focus-zoom).
+- No new pages and no PWA manifest / home-screen install (deferred); the
+  existing queue → day → adjust/lock flow is what gets mobile-optimised.
+
+**Acceptance**
+
+- With `WEB_BASE_URL` set, the reminder carries a URL button to
+  `…/review-queue`; with it unset, the reminder is text-only and still valid.
+- `Button(url=…)` renders a Telegram URL button, not a callback button.
+- The review-queue and day tables carry `data-label`s and stack under the
+  responsive breakpoint; the base template carries the iOS meta + safe-area
+  padding. Visual correctness verified at mobile width / on a real iPhone.
 
 ## 7. Testing standards
 

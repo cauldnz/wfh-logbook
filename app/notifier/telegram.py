@@ -44,11 +44,13 @@ class TelegramError(RuntimeError):
 def _buttons_to_inline_keyboard(
     buttons: tuple[tuple[Any, ...], ...],
 ) -> dict[str, list[list[dict[str, str]]]]:
-    return {
-        "inline_keyboard": [
-            [{"text": b.text, "callback_data": b.callback_data} for b in row] for row in buttons
-        ]
-    }
+    def _one(b: Any) -> dict[str, str]:
+        # A Telegram inline button carries exactly one of url / callback_data.
+        if getattr(b, "url", None):
+            return {"text": b.text, "url": b.url}
+        return {"text": b.text, "callback_data": b.callback_data}
+
+    return {"inline_keyboard": [[_one(b) for b in row] for row in buttons]}
 
 
 class TelegramClient:
