@@ -1,0 +1,56 @@
+# Lint, type-check, and test on every push to `main` and every pull request —
+# the gate `make lint typecheck test` defines, enforced in CI. Complements
+# docker.yml (which only builds/publishes the runtime image, so the test suite
+# that defends the audit story previously ran nowhere automatically).
+name: ci
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+# One in-flight run per ref; new pushes cancel the previous run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Production runs 3.12 (Docker python:3.12-slim); 3.13 catches drift
+        # before the deployment box upgrades. requires-python = ">=3.12".
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install (project + dev extras)
+        run: uv pip install --system -e ".[dev]"
+
+      - name: Ruff lint
+        run: ruff check --output-format=github .
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: Mypy (strict, app/)
+        run: mypy app
+
+      - name: Pytest
+        run: pytest

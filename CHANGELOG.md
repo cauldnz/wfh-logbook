@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Continuous integration** (`.github/workflows/ci.yml`): every push to
+  `main` and every pull request now runs `ruff check`, `ruff format --check`,
+  `mypy --strict` on `app/`, and the full `pytest` suite, across a Python
+  3.12 / 3.13 matrix with in-progress-run cancellation. Previously only the
+  Docker image build ran in CI; the lint/type/test gate that defends the
+  audit story (`make lint typecheck test`) is now enforced on every change.
+
 - **Phase 7 — Telegram daily-review bot**, built against real captured
   Bot API payloads (Real Data First). Pure conversation state machine +
   strict adjustment grammar (unsigned/zero/over-24h/typographic-minus all
