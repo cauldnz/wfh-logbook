@@ -16,7 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`POST /api/days/lock-clean`) that locks only unlocked > 0h days whose sole
   review reason is `unlocked_backlog`. Pure classification + lock workflow — no
   change to hour derivation (`METHODOLOGY.md` / `rule_version` untouched).
-  Remaining on the branch: morning Telegram lock reminders, a `/lockall` bot
+  Adds a daily morning Telegram **lock reminder** (10.A) that nudges about
+  unlocked days (escalating with the oldest age, pointing clean days at
+  `/lockall`), configurable via `LOCK_REMINDER_HOUR` /
+  `LOCK_REMINDER_THRESHOLD_DAYS`. Remaining on the branch: a `/lockall` bot
   command, a web backlog banner, and an export guard.
 
 - **Phase 7 — Telegram daily-review bot**, built against real captured

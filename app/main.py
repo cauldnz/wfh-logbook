@@ -186,6 +186,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
         telegram_client = TelegramClient(settings.telegram_bot_token)
         app.state.telegram_client = telegram_client
+        # Daily lock-backlog reminder (Phase 10.A) — works in either mode,
+        # since sending is independent of how updates are received.
+        from app.notifier.reminders import register_reminder_job
+
+        register_reminder_job(scheduler, telegram_client, settings, timezone_name)
         if settings.telegram_mode == "webhook":
             if settings.public_base_url and settings.telegram_webhook_secret:
                 try:
