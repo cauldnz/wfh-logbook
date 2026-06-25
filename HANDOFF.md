@@ -185,7 +185,7 @@ Deliver in the order below. Each phase ends with all its acceptance criteria gre
 > | 7 — Telegram daily-review bot | ✅ Done (polling mode live; webhook mode built + tested, pending Cloudflare Tunnel on the NAS) | `563c139`, `f635050`, `e6606f4`, `716cad5`, `606c16d`, `195f7ee` |
 > | 8 — v0.2 enhancements (review queue, audit bundle, year stats, NAS deployment + backups UX) | ✅ Done | `ae533ef`, `70c5eb9`, `76f1763`, `cca0d65` |
 > | 9 — usability backlog (editable pre-locked days, calendar headers, /rebuild) | ✅ Done | `70977d2`, `b512167` |
-> | 10 — lock-backlog reduction (reminders, bulk-lock, forgotten-disconnect flag, web banner, export guard) | 🚧 In progress (`feat/phase-10-lock-backlog`) | — |
+> | 10 — lock-backlog reduction (reminders, bulk-lock, forgotten-disconnect flag, web banner, export guard) | ✅ Done (PR open) | `feat/phase-10-lock-backlog` |
 
 ### Phase 1 — Skeleton and data layer
 

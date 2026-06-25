@@ -290,3 +290,29 @@ def lock_clean_days(db: Session, today_local: date) -> BulkLockResult:
             skipped += 1
     db.flush()
     return BulkLockResult(locked_dates=locked, skipped_count=skipped)
+
+
+def count_unlocked_in_range(db: Session, from_date: date, to_date: date) -> int:
+    """Number of dates in ``[from_date, to_date]`` whose latest summary is unlocked.
+
+    Used by the export guard (HANDOFF §6 Phase 10.E) and the web year view.
+    """
+    subq = (
+        select(
+            DailySummary.local_date.label("ld"),
+            func.max(DailySummary.version).label("mv"),
+        )
+        .where(DailySummary.local_date >= from_date.isoformat())
+        .where(DailySummary.local_date <= to_date.isoformat())
+        .group_by(DailySummary.local_date)
+        .subquery()
+    )
+    rows = list(
+        db.execute(
+            select(DailySummary).join(
+                subq,
+                (DailySummary.local_date == subq.c.ld) & (DailySummary.version == subq.c.mv),
+            )
+        ).scalars()
+    )
+    return sum(1 for r in rows if not bool(r.locked))
