@@ -26,6 +26,13 @@
         Poller last succeeded {{ poll_banner }} ago. Live data may be stale until the next successful poll.
       </div>
     {% endif %}
+    {% if lock_backlog_count %}
+      <div class="banner warn">
+        🔒 {{ lock_backlog_count }} unlocked day{{ 's' if lock_backlog_count != 1 else '' }}
+        (oldest {{ lock_backlog_age }} day{{ 's' if lock_backlog_age != 1 else '' }} ago) —
+        <a href="/review-queue">review &amp; lock</a>.
+      </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 </body>

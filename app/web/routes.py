@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.days_service import (
@@ -28,7 +28,7 @@ from app.api.days_service import (
     lock_day,
 )
 from app.db import get_session
-from app.models import PollerState
+from app.models import DailySummary, PollerState
 from app.schemas import DailySummaryOut, WorkSessionOut
 from app.sessions.persistence import sessionise_date
 from app.sessions.rules import RuleSet
@@ -81,16 +81,45 @@ def _poll_banner_text(state: PollerState | None) -> str | None:
     return None
 
 
+def _lock_backlog(db: Session, today_local: date) -> tuple[int, date | None]:
+    """Count unlocked latest-version days before today, and the oldest (HANDOFF
+    §6 Phase 10.D). Drives the persistent backlog banner."""
+    subq = (
+        select(
+            DailySummary.local_date.label("ld"),
+            func.max(DailySummary.version).label("mv"),
+        )
+        .where(DailySummary.local_date < today_local.isoformat())
+        .group_by(DailySummary.local_date)
+        .subquery()
+    )
+    rows = list(
+        db.execute(
+            select(DailySummary).join(
+                subq,
+                (DailySummary.local_date == subq.c.ld) & (DailySummary.version == subq.c.mv),
+            )
+        ).scalars()
+    )
+    unlocked = sorted((r for r in rows if not bool(r.locked)), key=lambda r: r.local_date)
+    if not unlocked:
+        return 0, None
+    return len(unlocked), date.fromisoformat(unlocked[0].local_date)
+
+
 def _base_context(db: Session) -> dict:  # type: ignore[type-arg]
     cfg = _get_config(db)
     state = db.execute(select(PollerState).limit(1)).scalar_one_or_none()
     tz = ZoneInfo(cfg.local_timezone)
     today = datetime.now(tz).date()
+    backlog_count, backlog_oldest = _lock_backlog(db, today)
     return {
         "rule_version": cfg.rule_version,
         "tz": tz,
         "current_fy": current_fy_label(today),
         "poll_banner": _poll_banner_text(state),
+        "lock_backlog_count": backlog_count,
+        "lock_backlog_age": (today - backlog_oldest).days if backlog_oldest else 0,
     }
 
 
@@ -327,6 +356,19 @@ def web_lock(
 ) -> HTMLResponse:
     lock_day(db, target_date)
     return _render_day_card(request, db, target_date)
+
+
+@router.post("/web/days/lock-clean")
+def web_lock_clean(
+    db: Session = Depends(get_session),  # noqa: B008
+) -> RedirectResponse:
+    """Bulk-lock all clean days, then back to the queue (HANDOFF §6 Phase 10.B)."""
+    from app.api.days_service import lock_clean_days
+
+    cfg = _get_config(db)
+    today_local = datetime.now(ZoneInfo(cfg.local_timezone)).date()
+    lock_clean_days(db, today_local)
+    return RedirectResponse(url="/review-queue", status_code=303)
 
 
 @router.post("/web/days/{target_date}/resessionise", response_class=HTMLResponse)

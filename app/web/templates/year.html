@@ -5,9 +5,24 @@
     <div class="row">
       <h2 style="margin:0;">Financial year {{ fy }}</h2>
       <span class="spacer"></span>
-      <a class="button" href="/api/export.xlsx?fy={{ fy }}">Download XLSX</a>
+      {% if unlocked_count %}
+        <details>
+          <summary>⚠ Download XLSX ({{ unlocked_count }} unlocked)</summary>
+          <div class="banner warn" style="margin-top:0.5rem;">
+            This FY has {{ unlocked_count }} unlocked day(s). An export should normally contain
+            only reviewed, locked days — <a href="/review-queue">review &amp; lock</a> first.
+          </div>
+          <a class="button" href="/api/export.xlsx?fy={{ fy }}&amp;allow_unlocked=true">Export anyway (includes {{ unlocked_count }} unlocked)</a>
+        </details>
+        <details>
+          <summary>⚠ Audit bundle ({{ unlocked_count }} unlocked)</summary>
+          <a class="button muted" href="/api/export.bundle?fy={{ fy }}&amp;allow_unlocked=true" title="XLSX + methodology + raw CSVs + SHA-256 manifest">Export bundle anyway</a>
+        </details>
+      {% else %}
+        <a class="button" href="/api/export.xlsx?fy={{ fy }}">Download XLSX</a>
+        <a class="button muted" href="/api/export.bundle?fy={{ fy }}" title="XLSX + methodology + raw CSVs + SHA-256 manifest">Audit bundle (zip)</a>
+      {% endif %}
       <a class="button muted" href="/api/export.csv?from={{ fy_start }}&to={{ fy_end }}">Download CSV</a>
-      <a class="button muted" href="/api/export.bundle?fy={{ fy }}" title="XLSX + methodology + raw CSVs + SHA-256 manifest">Audit bundle (zip)</a>
     </div>
     <p class="muted">{{ fy_start }} &mdash; {{ fy_end }} (Australian financial year)</p>
 

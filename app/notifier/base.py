@@ -140,6 +140,14 @@ class ApplyRebuild:
     announce: bool = True
 
 
+@dataclass(frozen=True, slots=True)
+class ApplyBulkLock:
+    """Lock every clean unlocked day in one action (HANDOFF §6 Phase 10.B).
+
+    No fields — the service runs ``lock_clean_days`` for the current 'today'.
+    """
+
+
 OutgoingAction = (
     SendMessage
     | EditMessage
@@ -150,6 +158,7 @@ OutgoingAction = (
     | ApplyConfirm
     | ApplyLock
     | ApplyRebuild
+    | ApplyBulkLock
 )
 
 

@@ -7,6 +7,10 @@
       <p class="banner ok">Nothing needs attention. All reviewed days are locked and clean.</p>
     {% else %}
       <p class="muted">{{ queue.items|length }} day(s) need attention (scanning back to {{ queue.from_date }}; older unlocked days always included).</p>
+      <form method="post" action="/web/days/lock-clean" style="margin:0.5rem 0;">
+        <button type="submit" class="button">🔒 Lock all clean days</button>
+        <span class="muted">Locks unlocked days with no flags and &gt; 0 h; leaves anomalies/flagged/0 h days for review.</span>
+      </form>
       <table>
         <thead>
           <tr><th>Date</th><th>Flags</th><th>Claimed</th><th>Detail</th><th></th></tr>
@@ -21,6 +25,8 @@
                 {% elif reason == 'anomalous' %}<span class="badge error">anomalous</span>
                 {% elif reason == 'data_gap' %}<span class="badge error">data gap</span>
                 {% elif reason == 'heavy_bridging' %}<span class="badge warn">heavy bridging</span>
+                {% elif reason == 'long_session' %}<span class="badge error">long session</span>
+                {% elif reason == 'suspect_zero' %}<span class="badge warn">suspect 0h</span>
                 {% endif %}
               {% endfor %}
             </td>

@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     telegram_webhook_secret: str = ""
     public_base_url: str = ""
 
+    # ------------------------------------------ Lock-backlog reminders (10.A)
+    lock_reminder_hour: int = 8  # local hour (0-23) for the daily lock nudge
+    lock_reminder_threshold_days: int = 1  # nudge about days at least this old
+
     # ----------------------------------------------------- Cloudflare Tunnel
     cloudflare_tunnel_token: str = ""
 

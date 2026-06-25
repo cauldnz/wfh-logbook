@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 10 — lock-backlog reduction**: tackles the unlocked-day backlog that
+  builds up when anomalous days need correction. None of it changes how hours
+  are derived (`METHODOLOGY.md` / `rule_version` untouched).
+  - **Reminders (10.A)**: a daily morning Telegram nudge listing unlocked days,
+    escalating with the oldest age and pointing clean days at `/lockall`;
+    configurable via `LOCK_REMINDER_HOUR` / `LOCK_REMINDER_THRESHOLD_DAYS`.
+  - **Bulk lock (10.B)**: `POST /api/days/lock-clean`, a `/lockall` bot command,
+    and a "Lock all clean days" button on the review queue — each locks only
+    unlocked > 0h days whose sole review reason is `unlocked_backlog`, leaving
+    anomalies/flags for manual review.
+  - **Forgotten-disconnect flags (10.C)**: review-queue `long_session` (one
+    session > 16h) and `suspect_zero` (the 0-hour day in the shadow of a
+    midnight-spanning session) — pure classification.
+  - **Web backlog banner (10.D)** across all pages, and an **export guard
+    (10.E)** that blocks an XLSX / audit-bundle export of a financial year
+    containing unlocked days unless `allow_unlocked=true` (the web flow asks for
+    explicit confirmation first).
+
 - **Continuous integration** (`.github/workflows/ci.yml`): every push to
   `main` and every pull request now runs `ruff check`, `ruff format --check`,
   `mypy --strict` on `app/`, and the full `pytest` suite, across a Python

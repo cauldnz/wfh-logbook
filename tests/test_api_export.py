@@ -188,7 +188,9 @@ class TestExportEndpoints:
     def test_xlsx_endpoint(self, seeded_year: Session, client: TestClient) -> None:
         # `client` is from conftest; uses a fresh DB. seeded_year used a
         # *different* session over the same DB, so the data IS persisted.
-        resp = client.get("/api/export.xlsx", params={"fy": "2025-26"})
+        # seeded_year has one unlocked day (2026-02-03), so the Phase 10.E
+        # export guard requires allow_unlocked=true to produce the file.
+        resp = client.get("/api/export.xlsx", params={"fy": "2025-26", "allow_unlocked": "true"})
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith(
             "application/vnd.openxmlformats-officedocument"

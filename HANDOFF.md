@@ -184,6 +184,8 @@ Deliver in the order below. Each phase ends with all its acceptance criteria gre
 > | 6 — Hardening | ✅ Done | `7f91d8a` |
 > | 7 — Telegram daily-review bot | ✅ Done (polling mode live; webhook mode built + tested, pending Cloudflare Tunnel on the NAS) | `563c139`, `f635050`, `e6606f4`, `716cad5`, `606c16d`, `195f7ee` |
 > | 8 — v0.2 enhancements (review queue, audit bundle, year stats, NAS deployment + backups UX) | ✅ Done | `ae533ef`, `70c5eb9`, `76f1763`, `cca0d65` |
+> | 9 — usability backlog (editable pre-locked days, calendar headers, /rebuild) | ✅ Done | `70977d2`, `b512167` |
+> | 10 — lock-backlog reduction (reminders, bulk-lock, forgotten-disconnect flag, web banner, export guard) | ✅ Done (PR open) | `feat/phase-10-lock-backlog` |
 
 ### Phase 1 — Skeleton and data layer
 
@@ -510,6 +512,82 @@ Once an adjustment is successfully parsed while `awaiting='adjustment'`, the bot
 - `/rebuild 2026-06-10` from an authorised chat rebuilds and replies with the
   day view; `/rebuild` defaults to yesterday; malformed dates get a usage
   hint.
+
+### Phase 10 — Lock-backlog reduction (maintainer-reported, 2026-06-25)
+
+*(Reported from live use: when anomalous days need correction the daily
+review-and-lock habit slips and an unlocked backlog accumulates. None of the
+below changes how hours are derived — `METHODOLOGY.md` and `rule_version` are
+untouched. The methodology question of whether overnight sessions should be
+split at midnight is logged for a separate maintainer decision and is
+deliberately NOT actioned here.)*
+
+**10.A Proactive lock reminders (Telegram)**
+
+- A new daily scheduled job (APScheduler, alongside the poller / sessioniser /
+  backup in `app/main.py`) at `LOCK_REMINDER_HOUR` local (default 08:00 — the
+  "each morning" review time). It reuses `build_review_queue` and, when an
+  unlocked day older than `LOCK_REMINDER_THRESHOLD_DAYS` (default 1) exists,
+  sends ONE message per allowed Telegram user via the existing Notifier send
+  path, recorded to `bot_messages` like every other outbound. Wording escalates
+  with the oldest age (gentle ≤ 7 days; "⚠ overdue" beyond).
+- Silent when the bot is disabled (no token / no allowed users) or there is
+  nothing unlocked. The per-day reasons are never logged above DEBUG.
+- Config: `LOCK_REMINDER_HOUR` (0–23, default 8) and
+  `LOCK_REMINDER_THRESHOLD_DAYS` (default 1). Env/seed only; no DB schema change.
+
+**10.B One-tap bulk lock of clean days**
+
+- `lock_clean_days(db, today_local)` locks every unlocked past day whose ONLY
+  review-queue reason is `unlocked_backlog` and whose claimed hours are > 0.
+  Anomalous / data-gap / heavy-bridging / long-session / suspect-zero days and
+  0-hour days are left untouched. Reuses the review-queue predicate so "clean"
+  has exactly one definition.
+- Exposed as `POST /api/days/lock-clean` (web button on the review queue) and a
+  bot command `/lockall`; both call the same service function (§7.G holds — the
+  bot does not bypass the internal code path).
+
+**10.C Forgotten-disconnect review flag**
+
+- Two new review-queue reasons (pure classification — no hour change):
+  `long_session` (a single session longer than `LONG_SESSION_HOURS`, default 16
+  — the signature of a device left on the work SSID overnight) and
+  `suspect_zero` (a 0-hour day in the shadow of an earlier session that spilled
+  across midnight, whose hours therefore attributed to the earlier date). The
+  pair surfaces together and is excluded from 10.B bulk-lock.
+
+**10.D Web backlog banner**
+
+- A persistent banner across the web UI showing the count of unlocked past days
+  (and the oldest age), linking to `/review-queue`. Hidden when the backlog is
+  empty.
+
+**10.E Export guard**
+
+- Exporting a financial-year XLSX or audit bundle that contains unlocked days
+  warns and requires explicit confirmation in the web flow before producing the
+  file — an ATO export should not silently ship un-reviewed days. The API gains
+  an opt-in `allow_unlocked=true` the confirmed flow sets; the programmatic CLI
+  export is unchanged.
+
+**Out of scope (deliberate):** auto-locking days without a human action
+(considered and rejected — it weakens the "a human confirmed this" audit
+story); any change to midnight-crossing attribution (a METHODOLOGY change,
+logged for separate maintainer decision).
+
+**Acceptance**
+
+- A scheduled reminder fires for a seeded unlocked backlog and sends one message
+  per allowed user (asserted against a mock Notifier); it is silent with an
+  empty backlog or a disabled bot.
+- `POST /api/days/lock-clean` and `/lockall` lock only clean > 0h days; an
+  anomalous day, a flagged day, and a 0-hour day are all left unlocked.
+- A 20h single session is flagged `long_session`; the 0-hour day after a
+  midnight-spanning session is flagged `suspect_zero`; a normal 14h day and a
+  genuine 0-hour day are not.
+- The web banner shows the unlocked count and hides at zero; exporting a FY with
+  unlocked days requires confirmation, and the confirmed path still produces the
+  file.
 
 ## 7. Testing standards
 

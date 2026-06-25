@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.api.review_queue import build_review_queue, find_observation_gaps
-from app.models import DailySummary, Observation
+from app.models import DailySummary, Observation, WorkSession
 from app.sessions.persistence import sessionise_date
 from app.sessions.rules import RuleSet
 
@@ -65,6 +65,26 @@ def _polled_day(
         cur += timedelta(minutes=1)
     _obs(db, end, connected=False)
     db.commit()
+
+
+def _summary(db: Session, local_date: str, hours: float, *, locked: bool = False) -> None:
+    """Insert a v1 daily summary for a date (computed == claimed == hours)."""
+    secs = int(hours * 3600)
+    db.add(
+        DailySummary(
+            local_date=local_date,
+            version=1,
+            computed_seconds=secs,
+            adjustment_seconds=0,
+            adjustment_reason=None,
+            claimed_seconds=secs,
+            locked=locked,
+            locked_at=utc(2026, 6, 9) if locked else None,
+            created_at=utc(2026, 6, 9),
+            created_by="sessioniser",
+            rule_version="2026.1",
+        )
+    )
 
 
 class TestGapDetection:
@@ -188,8 +208,6 @@ class TestQueueCategories:
         assert item.reasons == ["unlocked_backlog"]
 
     def test_heavy_bridging_flagged(self, db_session: Session, rules: RuleSet) -> None:
-        from app.models import WorkSession
-
         db_session.add(
             DailySummary(
                 local_date="2026-06-05",
@@ -222,6 +240,85 @@ class TestQueueCategories:
         queue = build_review_queue(db_session, TODAY)
         item = next(i for i in queue.items if i.local_date == date(2026, 6, 5))
         assert "heavy_bridging" in item.reasons
+
+
+class TestForgottenDisconnect:
+    """Phase 10.C — long-session and suspect-zero flags (timezone: Australia/Sydney, UTC+10)."""
+
+    def test_long_session_flagged(self, db_session: Session, rules: RuleSet) -> None:
+        """A single 20h session (no disconnect) is flagged long_session."""
+        _summary(db_session, "2026-06-04", 20)
+        db_session.add(
+            WorkSession(
+                local_date="2026-06-04",
+                started_at=utc(2026, 6, 3, 17, 0),  # 2026-06-04 03:00 Sydney
+                ended_at=utc(2026, 6, 4, 13, 0),  # 2026-06-04 23:00 Sydney (same day)
+                duration_seconds=20 * 3600,  # > LONG_SESSION_HOURS (16)
+                devices_seen="Laptop",
+                bridged_gaps_count=0,
+                bridged_gaps_seconds=0,
+                created_at=utc(2026, 6, 5),
+                rule_version="2026.1",
+            )
+        )
+        db_session.commit()
+        queue = build_review_queue(db_session, TODAY)
+        item = next(i for i in queue.items if i.local_date == date(2026, 6, 4))
+        assert "long_session" in item.reasons
+
+    def test_normal_long_day_not_long_session(self, db_session: Session, rules: RuleSet) -> None:
+        """A 14h day is over the cap (anomalous) but not a forgotten-disconnect."""
+        _summary(db_session, "2026-06-03", 14)
+        db_session.add(
+            WorkSession(
+                local_date="2026-06-03",
+                started_at=utc(2026, 6, 2, 23, 0),  # 2026-06-03 09:00 Sydney
+                ended_at=utc(2026, 6, 3, 13, 0),  # 2026-06-03 23:00 Sydney (same day)
+                duration_seconds=14 * 3600,  # < 16h threshold
+                devices_seen="Laptop",
+                bridged_gaps_count=0,
+                bridged_gaps_seconds=0,
+                created_at=utc(2026, 6, 4),
+                rule_version="2026.1",
+            )
+        )
+        db_session.commit()
+        queue = build_review_queue(db_session, TODAY)
+        item = next(i for i in queue.items if i.local_date == date(2026, 6, 3))
+        assert "long_session" not in item.reasons
+
+    def test_suspect_zero_flagged_for_spill_shadow(
+        self, db_session: Session, rules: RuleSet
+    ) -> None:
+        """A session crossing midnight zeroes the next day → suspect_zero there."""
+        _summary(db_session, "2026-06-04", 26)
+        _summary(db_session, "2026-06-05", 0)  # zero day in the shadow
+        db_session.add(
+            WorkSession(
+                local_date="2026-06-04",
+                started_at=utc(2026, 6, 3, 22, 0),  # 2026-06-04 08:00 Sydney
+                ended_at=utc(2026, 6, 5, 0, 0),  # 2026-06-05 10:00 Sydney (next day)
+                duration_seconds=26 * 3600,
+                devices_seen="Laptop",
+                bridged_gaps_count=0,
+                bridged_gaps_seconds=0,
+                created_at=utc(2026, 6, 6),
+                rule_version="2026.1",
+            )
+        )
+        db_session.commit()
+        queue = build_review_queue(db_session, TODAY)
+        item = next(i for i in queue.items if i.local_date == date(2026, 6, 5))
+        assert "suspect_zero" in item.reasons
+
+    def test_genuine_zero_day_not_suspect(self, db_session: Session, rules: RuleSet) -> None:
+        """A 0h day with no spilling neighbour is just clean backlog, not suspect."""
+        _summary(db_session, "2026-06-02", 0)
+        db_session.commit()
+        queue = build_review_queue(db_session, TODAY)
+        item = next(i for i in queue.items if i.local_date == date(2026, 6, 2))
+        assert "suspect_zero" not in item.reasons
+        assert item.reasons == ["unlocked_backlog"]
 
 
 class TestEndpoints:

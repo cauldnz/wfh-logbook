@@ -27,12 +27,13 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.days_service import AdjustParams, adjust_day, get_day, lock_day
+from app.api.days_service import AdjustParams, adjust_day, get_day, lock_clean_days, lock_day
 from app.config import Settings
 from app.models import BotChat, BotMessage, BotState, Config, DailySummary, PollerState
 from app.notifier.base import (
     AnswerCallback,
     ApplyAdjustment,
+    ApplyBulkLock,
     ApplyConfirm,
     ApplyLock,
     ApplyRebuild,
@@ -483,6 +484,23 @@ def _execute(
             result.sessions_built,
             result.daily_summary_version,
         )
+
+    elif isinstance(action, ApplyBulkLock):
+        bulk = lock_clean_days(db, reader.today())
+        n = len(bulk.locked_dates)
+        if n == 0 and bulk.skipped_count == 0:
+            text = "Nothing to lock — the backlog is empty."
+        elif n == 0:
+            text = (
+                f"Locked nothing — all {bulk.skipped_count} unlocked day(s) need a look "
+                "first. /yesterday to review."
+            )
+        else:
+            text = f"🔒 Locked {n} clean day(s)."
+            if bulk.skipped_count:
+                text += f" {bulk.skipped_count} flagged day(s) left for review — /yesterday."
+        _send(db, notifier, chat_id, text)
+        logger.info("telegram: bulk lock locked=%d skipped=%d", n, bulk.skipped_count)
 
     else:  # pragma: no cover - defensive
         logger.error("telegram: unknown action type %s", type(action).__name__)
